@@ -444,6 +444,7 @@ md2toml shared-commands/ -o production/
 - ✅ **專案遷移** - 從舊格式轉到新格式
 - ✅ **效率控** - 不想把時間浪費在重複性工作
 
-## License
+## 官方格式參考
 
-MIT
+- Gemini CLI: [Gemini CLI Custom Commands](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/custom-commands.md)
+- Claude Code: [Claude Code Custom Slash Commands](https://code.claude.com/docs/en/slash-commands#custom-slash-commands)
