@@ -1,0 +1,18 @@
+description = "Tests all features together"
+tags = "test, complex, full-featured"
+title = "Complex Example"
+version = "2.0"
+
+prompt = """
+This document tests everything:
+
+1. It has {{ args }} that need replacement
+2. It has command patterns like !{git status} and !{npm install}
+3. Multiple {{ args }} and !{cat test.txt} in the same line
+
+Formatting should be preserved:
+  - Indentation
+  - Newlines
+
+Even blank lines above.
+"""

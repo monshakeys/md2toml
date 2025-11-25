@@ -1,0 +1,10 @@
+author = "Test User"
+title = "Simple Example"
+version = "1.0"
+
+prompt = """
+This is a simple prompt content.
+It has multiple lines.
+
+And paragraphs too.
+"""

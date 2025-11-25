@@ -1,0 +1,9 @@
+name = "Arguments Test"
+type = "command"
+
+prompt = """
+Please process these {{ args }} carefully.
+
+The {{ args }} should be replaced with template syntax.
+Multiple {{ args }} can appear in the same document.
+"""
