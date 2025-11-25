@@ -1,0 +1,57 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.bat]
+charset = big5
+end_of_line = crlf
+
+[*.{css,less,sass,scss,styl}]
+# Inherited
+
+[*.dart]
+# Inherited
+
+[*.go]
+indent_style = tab
+tab_width = 8
+
+[*.gs]
+# Inherited
+
+[*.html]
+# Inherited
+
+[*.{ipynb,py,pyi,pyrc,pyw,pyx}]
+indent_size = 4
+
+[*.{js,jsx,d.ts,ts,tsx}]
+# Inherited
+
+[**.min.js]
+indent_style = unset
+insert_final_newline = false
+
+[*.{json,jsonc,jsonl,jsonld}]
+# Inherited
+
+[Makefile,*.{mak,mk}]
+indent_style = tab
+
+[*.{md,rst}]
+trim_trailing_whitespace = false
+
+[*.sh]
+# Inherited
+
+[*.toml]
+# Inherited
+
+[*.{yaml,yml}]
+# Inherited
