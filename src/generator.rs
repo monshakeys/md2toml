@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
 use crate::error::Result;
 
-// 優化 3: 使用 BTreeMap 自動排序，省略手動排序步驟
-// 優化 5: String 容量預分配，減少記憶體重新分配次數
-/// Generate TOML output from metadata and prompt content
+/// Generates TOML output from metadata and prompt content.
+///
+/// Uses BTreeMap for automatic key ordering and pre-allocates string capacity
+/// for optimal performance.
 pub fn generate_toml(metadata: BTreeMap<String, String>, prompt: String) -> Result<String> {
-    // 估算最終大小：每個 metadata 約 50 bytes + prompt 長度 + 固定字串
     let estimated_size = metadata.len() * 50 + prompt.len() + 100;
     let mut output = String::with_capacity(estimated_size);
 
-    // BTreeMap 已經按 key 排序，不需要額外排序操作
-    // Write metadata as key = "value" pairs
     for (key, value) in &metadata {
         // Escape double quotes in values
         let escaped_value = value.replace('"', "\\\"");
@@ -38,7 +36,6 @@ pub fn generate_toml(metadata: BTreeMap<String, String>, prompt: String) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_generate_toml_simple() {
@@ -163,12 +160,12 @@ mod tests {
         metadata.insert("title".to_string(), "Complex".to_string());
         metadata.insert("version".to_string(), "1.0".to_string());
 
-        let prompt = "Line 1\n\nLine 3 with {{ args }}\nAnd !{command}".to_string();
+        let prompt = "Line 1\n\nLine 3 with {{args}}\nAnd !{command}".to_string();
 
         let result = generate_toml(metadata, prompt).unwrap();
 
         assert!(result.contains("title = \"Complex\""));
         assert!(result.contains("version = \"1.0\""));
-        assert!(result.contains("Line 1\n\nLine 3 with {{ args }}\nAnd !{command}"));
+        assert!(result.contains("Line 1\n\nLine 3 with {{args}}\nAnd !{command}"));
     }
 }

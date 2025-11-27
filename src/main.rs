@@ -4,38 +4,90 @@ use std::fs;
 use std::path::PathBuf;
 use md2toml::{InputType, detect_input_type};
 
+// ANSI color codes for modern terminal output
+mod colors {
+    pub const RESET: &str = "\x1b[0m";
+    pub const DIM: &str = "\x1b[2m";
+
+    pub const GREEN: &str = "\x1b[32m";
+    pub const YELLOW: &str = "\x1b[33m";
+    pub const CYAN: &str = "\x1b[36m";
+    pub const RED: &str = "\x1b[31m";
+
+    pub const BOLD_GREEN: &str = "\x1b[1;32m";
+    pub const BOLD_BLUE: &str = "\x1b[1;34m";
+    pub const BOLD_CYAN: &str = "\x1b[1;36m";
+    pub const BOLD_RED: &str = "\x1b[1;31m";
+}
+
+// Helper functions for styled output
+fn print_header(text: &str) {
+    println!("\n{}┌─{}─┐{}", colors::BOLD_CYAN, "─".repeat(text.len()), colors::RESET);
+    println!("{}│ {} │{}", colors::BOLD_CYAN, text, colors::RESET);
+    println!("{}└─{}─┘{}", colors::BOLD_CYAN, "─".repeat(text.len()), colors::RESET);
+}
+
+fn print_section(title: &str) {
+    println!("\n{}▸ {}{}", colors::BOLD_BLUE, title, colors::RESET);
+}
+
+fn print_success(msg: &str) {
+    println!("{}✓{} {}", colors::BOLD_GREEN, colors::RESET, msg);
+}
+
+fn print_error(msg: &str) {
+    eprintln!("{}✗{} {}", colors::BOLD_RED, colors::RESET, msg);
+}
+
+fn print_info(msg: &str) {
+    println!("{}ℹ{} {}", colors::BOLD_BLUE, colors::RESET, msg);
+}
+
+fn print_stat(label: &str, value: &str, color: &str) {
+    println!("  {}{:.<20}{} {}{}{}",
+        colors::DIM, label, colors::RESET,
+        color, value, colors::RESET);
+}
+
 #[derive(Parser, Debug)]
 #[command(name = "md2toml")]
-#[command(about = "Convert Markdown files with YAML frontmatter to TOML format")]
-#[command(long_about = r#"Convert Markdown files with YAML frontmatter to TOML format
+#[command(version)]
+#[command(author)]
+#[command(about = "🔄 md2toml - Slash Commands Converter", long_about = None)]
+#[command(after_help = r#"EXAMPLES:
+    # Convert a single file
+    md2toml input.md                    → Creates input.toml
+    md2toml input.md -o output.toml     → Creates output.toml
 
-USAGE:
-  # Single file conversion
-  md2toml input.md              # Creates input.toml
-  md2toml input.md -o out.toml  # Creates out.toml
-
-  # Directory conversion (recursive)
-  md2toml docs/                 # Creates docs_toml/ with same structure
-  md2toml docs/ -o output/      # Creates output/ with same structure
+    # Convert entire directory (recursive)
+    md2toml docs/                       → Creates docs_toml/ with same structure
+    md2toml docs/ -o output/            → Creates output/ with same structure
+    md2toml docs/ -v                    → With verbose output
 
 REQUIREMENTS:
-  Markdown files MUST contain both 'title' and 'description' in frontmatter.
+    • Markdown files MUST contain 'title' and 'description' in frontmatter
+    • Frontmatter must use YAML format (enclosed in ---)
 
 SPECIAL REPLACEMENTS:
-  $ARGUMENTS  →  {{ args }}
-  !`command`  →  !{command}
+    $ARGUMENTS   →   {{args}}
+    !`command`   →   !{command}
+
+SUPPORTED FILE TYPES:
+    .md files    → Converted to .toml with content processing
+    .txt files   → Copied as-is (no conversion)
+
+For more information, visit: https://github.com/yourusername/md2toml
 "#)]
 struct Args {
-    /// Input path (file or directory)
+    /// Input file or directory path
+    #[arg(value_name = "INPUT")]
     input: PathBuf,
 
-    /// Output path (optional)
-    /// - For files: defaults to input with .toml extension
-    /// - For directories: defaults to <input>_toml/
-    #[arg(short, long)]
+    /// Output file or directory path
+    #[arg(short, long, value_name = "PATH")]
     output: Option<PathBuf>,
 
-    /// Verbose output (show each file being converted)
+    /// Show detailed progress for each file
     #[arg(short, long)]
     verbose: bool,
 }
@@ -43,7 +95,6 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // 智能偵測輸入類型
     match detect_input_type(&args.input) {
         InputType::File(file_path) => {
             convert_single_file(file_path, args.output)?;
@@ -61,8 +112,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// 轉換單一檔案
+/// Converts a single markdown file to TOML format
 fn convert_single_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
+    print_info(&format!("Converting: {}", input.display()));
+
     // Read input file
     let input_content = fs::read_to_string(&input)
         .with_context(|| format!("Failed to read input file: {:?}", input))?;
@@ -92,58 +145,58 @@ fn convert_single_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
     fs::write(&output_path, toml_output)
         .with_context(|| format!("Failed to write output file: {:?}", output_path))?;
 
-    println!("Successfully converted {:?} to {:?}", input, output_path);
+    print_success(&format!("Created: {}", output_path.display()));
 
     Ok(())
 }
 
-/// 轉換整個資料夾
+/// Converts all markdown files in a directory to TOML format
 fn convert_directory_mode(input_dir: PathBuf, output: Option<PathBuf>, verbose: bool) -> Result<()> {
-    // 決定輸出資料夾
     let output_dir = output.unwrap_or_else(|| {
         let dir_name = input_dir.file_name().unwrap().to_str().unwrap();
         PathBuf::from(format!("{}_toml", dir_name))
     });
 
-    // 如果輸出資料夾已存在，詢問使用者
     if output_dir.exists() {
         if !md2toml::confirm_overwrite(&output_dir) {
-            println!("Operation cancelled.");
+            println!("{}Operation cancelled{}", colors::YELLOW, colors::RESET);
             return Ok(());
         }
-        // 刪除舊資料夾
         fs::remove_dir_all(&output_dir)
             .with_context(|| format!("Failed to remove existing directory: {:?}", output_dir))?;
     }
 
-    // 建立輸出資料夾
     fs::create_dir_all(&output_dir)
         .with_context(|| format!("Failed to create output directory: {:?}", output_dir))?;
 
-    println!("Converting directory: {:?} -> {:?}", input_dir, output_dir);
+    print_header("Starting Conversion");
+    println!("{}Source:{} {}", colors::DIM, colors::RESET, input_dir.display());
+    println!("{}Target:{} {}", colors::DIM, colors::RESET, output_dir.display());
 
-    // 批次轉換
     let stats = md2toml::convert_directory(&input_dir, &output_dir, verbose)?;
 
-    // 輸出統計
-    println!("\n=== Conversion Summary ===");
-    println!("Total files found:     {}", stats.total);
-    println!("Successfully converted: {}", stats.success);
+    print_header("Conversion Summary");
+    
+    print_stat("Total files", &stats.total.to_string(), colors::CYAN);
+    print_stat("Succeeded", &stats.success.to_string(), colors::GREEN);
 
     if stats.has_failures() {
-        println!("Failed:                {}", stats.failed.len());
-        println!("\nFailed files:");
+        print_stat("Failed", &stats.failed.len().to_string(), colors::RED);
+        
+        print_section("Failed Files");
         for (path, error) in &stats.failed {
-            eprintln!("  ✗ {:?}", path);
-            eprintln!("    Error: {}", error);
+            print_error(&format!("{}", path.display()));
+            eprintln!("    {}{}{}",
+                colors::DIM, error, colors::RESET);
         }
 
-        // 如果有失敗的檔案，返回錯誤碼
         if stats.success == 0 {
+            println!();
             std::process::exit(1);
         }
     } else {
-        println!("\n✓ All files converted successfully!");
+        println!();
+        print_success("All files converted successfully!");
     }
 
     Ok(())

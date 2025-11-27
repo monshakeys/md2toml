@@ -21,10 +21,10 @@ fn convert_md_to_toml(input: &str) -> Result<String, Box<dyn std::error::Error>>
     Ok(toml)
 }
 
-// 帶驗證的轉換（如同 main.rs 使用的）
+/// Converts markdown with validation (same as main.rs workflow)
 fn convert_md_to_toml_with_validation(input: &str) -> Result<String, Box<dyn std::error::Error>> {
     let metadata = md2toml::parse_frontmatter(input)?;
-    md2toml::validate_required_fields(&metadata)?;  // 驗證必要欄位
+    md2toml::validate_required_fields(&metadata)?;
     let content = md2toml::extract_content(input)?;
     let processed = md2toml::apply_all_replacements(&content);
     let toml = md2toml::generate_toml(metadata, processed)?;
@@ -91,10 +91,8 @@ fn test_integration_no_metadata() {
     assert_eq!(result, expected);
 }
 
-// Validation tests
 #[test]
 fn test_validation_pass_with_required_fields() {
-    // complex.md 有 title 和 description
     let input = read_fixture("complex.md");
     let expected = read_fixture("complex.expected.toml");
 
@@ -105,7 +103,6 @@ fn test_validation_pass_with_required_fields() {
 
 #[test]
 fn test_validation_fail_missing_description() {
-    // simple.md 只有 title，缺 description
     let input = read_fixture("simple.md");
 
     let result = convert_md_to_toml_with_validation(&input);
@@ -117,7 +114,6 @@ fn test_validation_fail_missing_description() {
 
 #[test]
 fn test_validation_fail_missing_title() {
-    // with_arguments.md 沒有 title 欄位
     let input = read_fixture("with_arguments.md");
 
     let result = convert_md_to_toml_with_validation(&input);
@@ -129,7 +125,6 @@ fn test_validation_fail_missing_title() {
 
 #[test]
 fn test_validation_fail_no_metadata() {
-    // no_metadata.md 完全沒有 frontmatter
     let input = read_fixture("no_metadata.md");
 
     let result = convert_md_to_toml_with_validation(&input);

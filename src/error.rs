@@ -1,4 +1,3 @@
-// 優化 7: 自定義錯誤類型，提供更清楚的錯誤訊息
 use thiserror::Error;
 
 #[derive(Error, Debug)]

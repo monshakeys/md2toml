@@ -1,24 +1,23 @@
 use regex::Regex;
 use once_cell::sync::Lazy;
 
-// 優化 1: Regex 快取 - 只編譯一次，重複使用
-// 類似 Django 的模組層級變數，程式啟動時初始化一次
+/// Lazily compiled regex for backtick pattern replacement.
+/// Initialized once at startup for performance.
 static BACKTICK_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"!`([^`]*)`").expect("Failed to compile backtick regex")
 });
 
-/// Replace $ARGUMENTS with {{ args }}
+/// Replaces $ARGUMENTS placeholder with {{args}} template syntax
 pub fn replace_arguments(content: &str) -> String {
-    content.replace("$ARGUMENTS", "{{ args }}")
+    content.replace("$ARGUMENTS", "{{args}}")
 }
 
-/// Replace !`(.*)` with !{$1}
-/// 優化：使用靜態編譯的 Regex，避免每次呼叫都重新編譯
+/// Replaces !`command` patterns with !{command} syntax
 pub fn replace_backtick_patterns(content: &str) -> String {
     BACKTICK_REGEX.replace_all(content, "!{$1}").to_string()
 }
 
-/// Apply all replacements in sequence
+/// Applies all text replacements for slash command conversion
 pub fn apply_all_replacements(content: &str) -> String {
     let step1 = replace_arguments(content);
     let step2 = replace_backtick_patterns(&step1);
@@ -35,14 +34,14 @@ mod tests {
     fn test_replace_arguments_single_occurrence() {
         let input = "Please process these $ARGUMENTS carefully.";
         let result = replace_arguments(input);
-        assert_eq!(result, "Please process these {{ args }} carefully.");
+        assert_eq!(result, "Please process these {{args}} carefully.");
     }
 
     #[test]
     fn test_replace_arguments_multiple_occurrences() {
         let input = "First $ARGUMENTS and second $ARGUMENTS in line.";
         let result = replace_arguments(input);
-        assert_eq!(result, "First {{ args }} and second {{ args }} in line.");
+        assert_eq!(result, "First {{args}} and second {{args}} in line.");
     }
 
     #[test]
@@ -56,7 +55,7 @@ mod tests {
     fn test_replace_arguments_multiline() {
         let input = "Line 1 with $ARGUMENTS\nLine 2 with $ARGUMENTS\nLine 3";
         let result = replace_arguments(input);
-        assert_eq!(result, "Line 1 with {{ args }}\nLine 2 with {{ args }}\nLine 3");
+        assert_eq!(result, "Line 1 with {{args}}\nLine 2 with {{args}}\nLine 3");
     }
 
     #[test]
@@ -64,7 +63,7 @@ mod tests {
         let input = "Test $arguments and $Arguments and $ARGUMENTS";
         let result = replace_arguments(input);
         // Only $ARGUMENTS should be replaced (case-sensitive)
-        assert_eq!(result, "Test $arguments and $Arguments and {{ args }}");
+        assert_eq!(result, "Test $arguments and $Arguments and {{args}}");
     }
 
     // Tests for backtick pattern replacement
@@ -129,21 +128,21 @@ mod tests {
     fn test_apply_all_replacements_both_patterns() {
         let input = "Process $ARGUMENTS with !`command` here.";
         let result = apply_all_replacements(input);
-        assert_eq!(result, "Process {{ args }} with !{command} here.");
+        assert_eq!(result, "Process {{args}} with !{command} here.");
     }
 
     #[test]
     fn test_apply_all_replacements_multiple_of_both() {
         let input = "First $ARGUMENTS and !`cmd1`, then $ARGUMENTS and !`cmd2`.";
         let result = apply_all_replacements(input);
-        assert_eq!(result, "First {{ args }} and !{cmd1}, then {{ args }} and !{cmd2}.");
+        assert_eq!(result, "First {{args}} and !{cmd1}, then {{args}} and !{cmd2}.");
     }
 
     #[test]
     fn test_apply_all_replacements_only_arguments() {
         let input = "Only $ARGUMENTS replacement needed.";
         let result = apply_all_replacements(input);
-        assert_eq!(result, "Only {{ args }} replacement needed.");
+        assert_eq!(result, "Only {{args}} replacement needed.");
     }
 
     #[test]
@@ -166,9 +165,9 @@ mod tests {
 Line 2: !`git status` command
 Line 3: Both $ARGUMENTS and !`npm install`
 Line 4: Nothing"#;
-        let expected = r#"Line 1: {{ args }} here
+        let expected = r#"Line 1: {{args}} here
 Line 2: !{git status} command
-Line 3: Both {{ args }} and !{npm install}
+Line 3: Both {{args}} and !{npm install}
 Line 4: Nothing"#;
         let result = apply_all_replacements(input);
         assert_eq!(result, expected);

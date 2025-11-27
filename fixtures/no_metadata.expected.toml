@@ -3,5 +3,5 @@ This file has no frontmatter metadata.
 
 Just content that should become the prompt.
 
-With {{ args }} and !{commands} still replaced.
+With {{args}} and !{commands} still replaced.
 """

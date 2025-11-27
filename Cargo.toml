@@ -2,6 +2,12 @@
 name = "md2toml"
 version = "0.1.0"
 edition = "2021"
+authors = ["monshakeys"]
+description = "md2toml - Slash Commands Converter"
+repository = "https://github.com/monshakeys/md2toml"
+keywords = ["claude-code", "gemini-cli", "slash-commands", "converter", "markdown-to-toml"]
+categories = ["command-line-utilities", "development-tools"]
+license = "MIT"
 
 [[bin]]
 name = "md2toml"
@@ -11,7 +17,6 @@ path = "src/main.rs"
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
-toml = "0.8"
 regex = "1.10"
 anyhow = "1.0"
 once_cell = "1.19"

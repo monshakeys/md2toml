@@ -1,183 +1,202 @@
-# md2toml 轉換規則
+# md2toml Conversion Rules
 
-## 檔案處理規則（由外而內）
 
-### 規則 1: 檔案和資料夾過濾 🆕
-遍歷資料夾時，首先執行過濾規則。
+## File Processing Rules
+### Rule 1: File and Directory Filtering
 
-- **忽略規則**：
-  - 檔案名稱以 `~` 或 `.` 開頭的 `.md` 檔案會被忽略
-  - 資料夾名稱以 `~` 或 `.` 開頭的整個資料夾會被忽略（包含其中的所有檔案）
-- **目的**：
-  - 波浪符號 (`~`)：方便使用者標記臨時檔案或草稿（例如：`~draft.md`、`~backup.md`）
-  - 句點符號 (`.`)：跳過隱藏檔案和系統資料夾（例如：`.DS_Store`、`.git`、`.claude`）
-- **性能考量**：
-  - 使用 `walkdir` 的 `filter_entry` 在遍歷時就過濾，避免不必要的讀取
-  - 同時過濾檔案和資料夾，效率最佳
-- **範例**：
-  - ✅ 會處理：`normal.md`、`docs/guide.md`、`file~with~tilde.md`、`file.with.dots.md`
-  - ❌ 會忽略：`~temp.md`、`.hidden.md`、`~backup/readme.md`、`.git/config.md`、`docs/~old/guide.md`
+Filtering rules are applied first when traversing directories.
 
-## 單檔轉換規則（由上而下）
+- Ignore Rules:
+  - Files starting with `~` or `.` are ignored (applies to all supported file types)
+  - Directories starting with `~` or `.` are ignored entirely (including all files within)
+- Purpose:
+  - Tilde symbol (`~`): Allows users to mark temporary files or drafts (e.g., `~draft.md`, `~backup.md`)
+  - Dot symbol (`.`): Skips hidden files and system directories (e.g., `.DS_Store`, `.git`, `.claude`)
+- Performance Considerations:
+  - Uses `walkdir`'s `filter_entry` to filter during traversal, avoiding unnecessary reads
+  - Filters both files and directories for optimal efficiency
+- Examples:
+  - ✅ Will process: `normal.md`, `docs/guide.md`, `notes.txt`, `file~with~tilde.md`, `file.with.dots.md`
+  - ❌ Will ignore: `~temp.md`, `.hidden.txt`, `~backup/readme.md`, `.git/config.md`, `docs/~old/guide.md`
 
-### 規則 2: YAML Frontmatter 解析
-解析檔案的 metadata 區塊。
 
-- **輸入**：`---` 之間的 YAML 格式 metadata
-- **輸出**：`BTreeMap<String, String>`（自動按字母排序）
-- **特殊處理**：
-  - 數字自動轉字串（`42` → `"42"`）
-  - 布林值自動轉字串（`true` → `"true"`）
+## Single File Conversion Rules
+### Rule 2: YAML Frontmatter Parsing
 
-### 規則 3: 必要欄位驗證 ⚠️
-驗證檔案是否為有效的 cc slash command 檔案。
+Parses the metadata block of files.
 
-- **必要欄位**：`title` 和 `description`（區分大小寫）
-- **錯誤訊息**：`"This is not a markdown file for cc slash command."`
-- **目的**：確保檔案是專門給 cc slash command 使用的
+- Input: YAML format metadata between `---` delimiters
+- Output: `BTreeMap<String, String>` (automatically sorted alphabetically)
+- Special Handling:
+  - Numbers are automatically converted to strings (`42` → `"42"`)
+  - Booleans are automatically converted to strings (`true` → `"true"`)
 
-### 規則 4: Content 提取
-提取 frontmatter 之後的所有內容。
+### Rule 1.5: Supported File Types and Processing Strategies
 
-- **輸入**：第二個 `---` 之後的所有內容
-- **保留**：
-  - 所有換行（除了最後一個）
-  - 所有縮排
-  - 所有空白行
-  - 所有特殊字元
+This tool supports two file types with different processing strategies:
 
-## 內容替換規則（由特殊到一般）
+| File Type | Output Type | Strategy | Description |
+|-----------|-------------|----------|-------------|
+| `.md` | `.toml` | Convert | Parse frontmatter, replace special syntax, generate TOML |
+| `.txt` | `.txt` | Copy | Direct copy without any conversion |
 
-### 規則 5: $ARGUMENTS 替換
-替換特定的參數佔位符。
-
-- **輸入**：`$ARGUMENTS`（區分大小寫）
-- **輸出**：`{{ args }}`
-- **支援**：多次出現、多行內容
-
-### 規則 6: Backtick Pattern 替換
-替換命令模式。
-
-- **輸入**：`` !`command` ``
-- **輸出**：`!{command}`
-- **正則表達式**：`!`([^`]*)``
-- **效能優化**：使用 `once_cell` 靜態編譯，避免每次呼叫都重新編譯
-
-## 輸出生成規則
-
-### 規則 7: TOML 生成
-生成最終的 TOML 格式輸出。
-
-- **Metadata**：
-  - 格式：`key = "value"`
-  - 順序：按字母排序（BTreeMap 自動處理）
-  - 特殊字元：雙引號要轉義（`"` → `\"`）
-
-- **Content**：
-  - 格式：`prompt = """..."""`（多行字串）
-  - 保留所有格式
-
----
-
-## 執行順序
-
-### 資料夾轉換流程
-```
-┌────────────────────────────────────────────────┐
-│ 1. collect_md_files()                          │
-│    └─ 遍歷資料夾（遞迴）                       │
-│    └─ filter_entry: 過濾 ~ 或 . 開頭的檔案   │
-│    └─ filter_entry: 跳過 ~ 或 . 開頭的資料夾 │
-│    └─ 收集所有 .md 檔案                        │
-└────────────────────────────────────────────────┘
-                    ↓
-          ┌────────────────┐
-          │ 逐一轉換每個檔案 │
-          └────────────────┘
-                    ↓
-       （進入單檔轉換流程）
-```
-
-### 單檔轉換流程
-```
-┌─────────────────────────────────────────┐
-│ 1. parse_markdown()                     │
-│    └─ 一次掃描完成兩項工作：             │
-│       • 解析 YAML frontmatter           │
-│       • 提取 content                    │
-│    └─ 返回 ParsedMarkdown 結構體       │
-└─────────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────┐
-│ 2. validate_required_fields()           │
-│    └─ 檢查 "title" 存在                │
-│    └─ 檢查 "description" 存在          │
-│    └─ 失敗則拋出錯誤                   │
-└─────────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────┐
-│ 3. apply_all_replacements()             │
-│    └─ replace_arguments()               │
-│       ($ARGUMENTS → {{ args }})        │
-│    └─ replace_backtick_patterns()       │
-│       (!`cmd` → !{cmd})                │
-└─────────────────────────────────────────┘
-                  ↓
-┌─────────────────────────────────────────┐
-│ 4. generate_toml()                      │
-│    └─ 寫入 metadata (按字母排序)       │
-│    └─ 寫入 prompt = """..."""          │
-└─────────────────────────────────────────┘
-```
-
-### 詳細步驟說明
-
-#### Directory: Collect Files（資料夾遍歷）
+Processing Strategy Implementation:
 ```rust
-let md_files = collect_md_files(src_dir)?;
+enum ProcessingStrategy {
+    Convert,  // md → toml (full conversion pipeline)
+    Copy,     // txt → txt (direct copy)
+}
 ```
 
-**關鍵特性**：
-- 使用 `filter_entry` 在遍歷階段就過濾，提升效能
-- 跳過整個 `~` 或 `.` 開頭的資料夾，避免不必要的遞迴
+Examples:
+- ✅ `guide.md` → Converted to `guide.toml`
+- ✅ `notes.txt` → Copied to `notes.txt`
+- ❌ `data.json` → Not supported, will be ignored
 
-#### Step 1: Parse（解析）
+
+### Rule 3: Required Field Validation
+
+Validates whether a file is a valid cc slash command file.
+
+- Required Fields: `title` and `description` (case-sensitive)
+- Error Message: `"This is not a markdown file for cc slash command."`
+- Purpose: Ensures the file is specifically for cc slash command usage
+
+### Rule 4: Content Extraction
+
+Extracts all content after the frontmatter.
+
+- Input: All content after the second `---` delimiter
+- Preserves:
+  - All newlines (except the last one)
+  - All indentation
+  - All blank lines
+  - All special characters
+
+
+## Content Replacement Rules
+### Rule 5: $ARGUMENTS Replacement
+
+Replaces specific parameter placeholders.
+
+- Input: `$ARGUMENTS` (case-sensitive)
+- Output: `{{args}}`
+- Supports: Multiple occurrences, multi-line content
+
+### Rule 6: Backtick Pattern Replacement
+
+Replaces command patterns.
+
+- Input: `` !`command` ``
+- Output: `!{command}`
+- Regular Expression: `!`([^`]\*)``
+- Performance Optimization: Uses `once_cell` for static compilation, avoiding recompilation on each call
+
+
+## Output Generation Rules
+### Rule 7: TOML Generation
+
+Generates the final TOML format output.
+
+- Metadata:
+  - Format: `key ="value"`
+  - Order: Alphabetically sorted (BTreeMap handles automatically)
+  - Special Characters: Double quotes must be escaped (`"` → `\"`)
+
+- Content:
+  - Format: `prompt ="""..."""` (multi-line string)
+  - Preserves all formatting
+
+
+## Execution Order
+### Directory Conversion Flow
+
+```mermaid
+flowchart TD
+  A[1. collect_files_by_extension] --> A1[Traverse directories recursively]
+  A1 --> A2[filter_entry: Filter files starting with ~ or .]
+  A2 --> A3[filter_entry: Skip directories starting with ~ or .]
+  A3 --> A4[Collect all supported files .md and .txt]
+  A4 --> B[Convert each file one by one]
+  B --> C[Enter single file conversion flow]
+```
+
+### Single File Conversion Flow
+
+```mermaid
+flowchart TD
+  A[1. parse_markdown] --> A1[Single scan completes two tasks]
+  A1 --> A2[- Parse YAML frontmatter]
+  A1 --> A3[- Extract content]
+  A2 --> A4[Return ParsedMarkdown struct]
+  A3 --> A4
+  A4 --> B[2. validate_required_fields]
+  B --> B1[Check title exists]
+  B1 --> B2[Check description exists]
+  B2 --> B3[Throw error if fails]
+  B3 --> C[3. apply_all_replacements]
+  C --> C1["replace_arguments<br>$ARGUMENTS → {{args}}"]
+  C1 --> C2["replace_backtick_patterns<br>!`cmd` → !{cmd}"]
+  C2 --> D[4. generate_toml]
+  D --> D1[Write metadata alphabetically sorted]
+  D1 --> D2[Write prompt = triple-quotes...triple-quotes]
+```
+
+### Detailed Step Descriptions
+#### Directory: Collect Files (Directory Traversal)
+
 ```rust
-// 優化版：一次掃描完成兩件事
+let md_files = collect_files_by_extension(src_dir, "md")?;
+let txt_files = collect_files_by_extension(src_dir, "txt")?;
+```
+
+**Key Features**:
+
+- Uses `filter_entry` to filter during traversal phase, improving performance
+- Skips entire directories starting with `~` or `.`, avoiding unnecessary recursion
+
+#### Step 1: Parse
+
+```rust
+// Optimized version: Single scan completes two tasks
 let ParsedMarkdown { metadata, content } = parse_markdown(input)?;
 
-// 向後相容：分開呼叫
+// Backward compatible: Separate calls
 let metadata = parse_frontmatter(input)?;
 let content = extract_content(input)?;
 ```
 
-**關鍵優化**：只掃描一次 `---` 分隔符，避免重複遍歷。
+**Key Optimization**: Only scans for `---` delimiter once, avoiding redundant traversal.
 
-#### Step 2: Validate（驗證）
+#### Step 2: Validate
+
 ```rust
 validate_required_fields(&metadata)?;
 ```
 
-**目的**：確保檔案包含 `title` 和 `description` 欄位。
+**Purpose**: Ensures the file contains `title` and `description` fields.
 
-#### Step 3: Replace（替換）
+#### Step 3: Replace
+
 ```rust
-// 鏈式調用（內部順序固定）
+// Chained invocation (internal order is fixed)
 let processed = apply_all_replacements(content);
 
-// 等同於
-let step1 = replace_arguments(content);         // $ARGUMENTS → {{ args }}
+// Equivalent to
+let step1 = replace_arguments(content);         // $ARGUMENTS → {{args}}
 let step2 = replace_backtick_patterns(&step1);  // !`cmd` → !{cmd}
 ```
 
-**執行順序**：先處理 `$ARGUMENTS`，再處理 backtick patterns。
+**Execution Order**: Process `$ARGUMENTS` first, then backtick patterns.
 
-#### Step 4: Generate（生成）
+#### Step 4: Generate
+
 ```rust
 let toml_output = generate_toml(metadata, processed_content)?;
 ```
 
-**輸出格式**：
+**Output Format**:
+
 ```toml
 key1 = "value1"
 key2 = "value2"
@@ -188,11 +207,10 @@ with replacements
 """
 ```
 
----
 
-## 完整範例
+## Complete Example
+### Input (example.md)
 
-### 輸入 (example.md)
 ```markdown
 ---
 title: Git Status Command
@@ -207,23 +225,24 @@ Use !`git status` to see changes.
 Then use !`git diff` for details.
 ```
 
-### 處理流程
+### Processing Flow
 
-1. **Parse**:
+1. Parse:
    - metadata = { "author": "DevTeam", "description": "Show...", "title": "Git...", "version": "2.0" }
    - content = "Please check $ARGUMENTS...\n\nUse !`git status`..."
 
-2. **Validate**:
-   - ✅ title 存在
-   - ✅ description 存在
-   - 通過驗證
+2. Validate:
+   - ✅ title exists
+   - ✅ description exists
+   - Passes validation
 
-3. **Replace**:
-   - `$ARGUMENTS` → `{{ args }}`
+3. Replace:
+   - `$ARGUMENTS` → `{{args}}`
    - `` !`git status` `` → `!{git status}`
    - `` !`git diff` `` → `!{git diff}`
 
-4. **Generate**:
+4. Generate:
+
    ```toml
    author = "DevTeam"
    description = "Show git repository status"
@@ -231,18 +250,16 @@ Then use !`git diff` for details.
    version = "2.0"
 
    prompt = """
-   Please check {{ args }} in the repository.
+   Please check {{args}} in the repository.
 
    Use !{git status} to see changes.
    Then use !{git diff} for details.
    """
    ```
 
----
 
-## 錯誤處理範例
-
-### 缺少必要欄位
+## Error Handling Example
+### Missing Required Fields
 
 ```markdown
 ---
@@ -253,47 +270,48 @@ author: User
 Content
 ```
 
-**錯誤**：
+**Error**:
+
 ```
 Error: Invalid frontmatter format: This is not a markdown file for cc slash command.
 ```
 
-**原因**：缺少 `description` 欄位。
+**Reason**: Missing `description` field.
 
----
 
-## 測試覆蓋
+## Test Coverage
+### Unit Tests (65 tests)
 
-### 單元測試（62 個）
 - Parser: 12 tests (metadata + content + validation)
 - Replacer: 14 tests ($ARGUMENTS + backticks)
 - Generator: 9 tests (TOML output)
 - Error: 5 tests (validation failures)
 - Directory: 16 tests (path detection + file collection + prefix filtering)
-  - 8 個前綴過濾測試：
-    - ✅ 忽略 `~` 開頭的檔案
-    - ✅ 忽略 `.` 開頭的檔案
-    - ✅ 不忽略正常檔案（含中間有符號的檔名）
-    - ✅ 忽略 `~` 開頭的資料夾
-    - ✅ 忽略 `.` 開頭的資料夾
-    - ✅ 不忽略正常資料夾
-    - ✅ `collect_md_files` 忽略波浪符號和句點檔案
-    - ✅ `collect_md_files` 忽略波浪符號和句點資料夾
+  - 8 prefix filtering tests:
+    - ✅ Ignore files starting with `~`
+    - ✅ Ignore files starting with `.`
+    - ✅ Do not ignore normal files (including filenames with symbols in the middle)
+    - ✅ Ignore directories starting with `~`
+    - ✅ Ignore directories starting with `.`
+    - ✅ Do not ignore normal directories
+    - ✅ `collect_files_by_extension` ignores tilde and dot files
+    - ✅ `collect_files_by_extension` ignores tilde and dot directories
 
-### 整合測試（18 個）
-- **資料夾轉換測試（8 個）**：
-  - ✅ 巢狀目錄結構轉換
-  - ✅ 驗證失敗處理
-  - ✅ 空目錄錯誤處理
-  - ✅ 部分成功情境
-  - ✅ 深層嵌套支援
-  - ✅ 路徑映射正確性
-  - ✅ 特殊字元檔名
-  - ✅ 前綴過濾（~ 和 .）
-- **檔案轉換測試（10 個）**：
-  - 6 個基本轉換測試（不驗證必要欄位）
-  - 4 個驗證測試：
-    - ✅ 通過驗證（有 title + description）
-    - ❌ 缺少 description
-    - ❌ 缺少 title
-    - ❌ 沒有 metadata
+### Integration Tests (18 tests)
+
+- Directory conversion tests (8 tests):
+  - ✅ Nested directory structure conversion
+  - ✅ Validation failure handling
+  - ✅ Empty directory error handling
+  - ✅ Partial success scenarios
+  - ✅ Deep nesting support
+  - ✅ Path mapping correctness
+  - ✅ Special character filenames
+  - ✅ Prefix filtering (~ and .)
+- File conversion tests (10 tests):
+  - 6 basic conversion tests (without required field validation)
+  - 4 validation tests:
+    - ✅ Pass validation (has title + description)
+    - ❌ Missing description
+    - ❌ Missing title
+    - ❌ No metadata
