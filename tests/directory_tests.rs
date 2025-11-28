@@ -1,15 +1,21 @@
 use assert_fs::prelude::*;
 use predicates::prelude::*;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
+
+fn fixture_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name)
+}
 
 #[test]
 fn test_convert_directory_with_nested_structure() {
-    let input_dir = Path::new("tests/fixtures/test_project");
+    let input_dir = fixture_path("test_project");
     let output_dir = assert_fs::TempDir::new().unwrap();
 
     let stats = md2toml::convert_directory(
-        input_dir,
+        &input_dir,
         output_dir.path(),
         false
     ).unwrap();
@@ -77,11 +83,48 @@ fn test_convert_directory_with_nested_structure() {
 
 #[test]
 fn test_convert_directory_with_validation_failures() {
-    let input_dir = Path::new("tests/fixtures");
+    // Create a temporary directory with test files
+    let input_dir = assert_fs::TempDir::new().unwrap();
     let output_dir = assert_fs::TempDir::new().unwrap();
 
+    // Create test files: only complex.md should pass validation (has both title and description)
+    input_dir.child("simple.md").write_str(r#"---
+title: Simple
+---
+Content without description
+"#).unwrap();
+
+    input_dir.child("complex.md").write_str(r#"---
+title: Complex
+description: This has both required fields
+---
+Content here
+"#).unwrap();
+
+    input_dir.child("with_arguments.md").write_str(r#"---
+title: With Arguments
+---
+Missing description
+"#).unwrap();
+
+    input_dir.child("with_backticks.md").write_str(r#"---
+title: With Backticks
+---
+No description field
+"#).unwrap();
+
+    input_dir.child("empty_content.md").write_str(r#"---
+title: Empty
+---
+"#).unwrap();
+
+    input_dir.child("no_metadata.md").write_str(r#"Just content without frontmatter
+"#).unwrap();
+
+    input_dir.child("simple.txt").write_str("Plain text file").unwrap();
+
     let stats = md2toml::convert_directory(
-        input_dir,
+        input_dir.path(),
         output_dir.path(),
         false
     ).unwrap();
@@ -223,10 +266,10 @@ Deep content with $ARGUMENTS and !`deep-command`
 
 #[test]
 fn test_path_mapping_correctness() {
-    let input_dir = Path::new("tests/fixtures/test_project");
+    let input_dir = fixture_path("test_project");
     let output_dir = assert_fs::TempDir::new().unwrap();
 
-    md2toml::convert_directory(input_dir, output_dir.path(), false).unwrap();
+    md2toml::convert_directory(&input_dir, output_dir.path(), false).unwrap();
 
     let expected_files = vec![
         "intro.toml",
@@ -277,11 +320,11 @@ Content
 
 #[test]
 fn test_ignore_tilde_and_dot_prefix_files_and_directories() {
-    let input_dir = Path::new("tests/fixtures/test_tilde_ignore");
+    let input_dir = fixture_path("test_tilde_ignore");
     let output_dir = assert_fs::TempDir::new().unwrap();
 
     let stats = md2toml::convert_directory(
-        input_dir,
+        &input_dir,
         output_dir.path(),
         false
     ).unwrap();

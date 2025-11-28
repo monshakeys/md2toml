@@ -329,9 +329,15 @@ mod tests {
     use std::path::PathBuf;
     use assert_fs::prelude::*;
 
+    fn fixture_path(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures")
+            .join(name)
+    }
+
     #[test]
     fn test_detect_input_type_file() {
-        let path = PathBuf::from("tests/fixtures/simple.md");
+        let path = fixture_path("simple.md");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::File(path.clone()));
@@ -339,7 +345,7 @@ mod tests {
 
     #[test]
     fn test_detect_input_type_directory() {
-        let path = PathBuf::from("tests/fixtures");
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::Directory(path.clone()));
@@ -369,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_detect_input_type_txt_file() {
-        let path = PathBuf::from("tests/fixtures/simple.txt");
+        let path = fixture_path("simple.txt");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::File(path.clone()));
@@ -377,9 +383,12 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_md() {
-        let result = collect_files_by_extension(Path::new("tests/fixtures"), "md").unwrap();
+        let fixtures_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+        let result = collect_files_by_extension(&fixtures_dir, "md").unwrap();
 
-        assert_eq!(result.len(), 6);
+        // tests/fixtures now contains multiple subdirectories with .md files
+        // 6 at top level + 2 in mixed_files + 4 in test_project + 2 in test_tilde_ignore (non-hidden) = 14
+        assert_eq!(result.len(), 14);
 
         for path in result {
             assert_eq!(path.extension(), Some("md".as_ref()));
@@ -388,16 +397,17 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_txt() {
-        let test_dir = Path::new("tests/fixtures");
+        let test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
         let txt_file_path = test_dir.join("temp_test.txt");
         std::fs::write(&txt_file_path, "test content").unwrap();
 
-        let result = collect_files_by_extension(test_dir, "txt").unwrap();
+        let result = collect_files_by_extension(&test_dir, "txt").unwrap();
 
         // Check if simple.txt and temp_test.txt are found
         assert!(result.iter().any(|p| p.file_name().unwrap() == "simple.txt"));
         assert!(result.iter().any(|p| p.file_name().unwrap() == "temp_test.txt"));
-        assert_eq!(result.len(), 2); // simple.txt and temp_test.txt
+        // simple.txt + temp_test.txt + 2 from mixed_files = 4
+        assert_eq!(result.len(), 4);
 
         for path in result {
             assert_eq!(path.extension(), Some("txt".as_ref()));
@@ -491,9 +501,9 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_ignores_tilde_files() {
-        let test_dir = Path::new("tests/fixtures/test_tilde_ignore");
+        let test_dir = fixture_path("test_tilde_ignore");
         if test_dir.exists() {
-            let result = collect_files_by_extension(test_dir, "md").unwrap();
+            let result = collect_files_by_extension(&test_dir, "md").unwrap();
 
             for path in &result {
                 let file_name = path.file_name().unwrap().to_str().unwrap();
@@ -507,9 +517,9 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_ignores_tilde_directories() {
-        let test_dir = Path::new("tests/fixtures/test_tilde_ignore");
+        let test_dir = fixture_path("test_tilde_ignore");
         if test_dir.exists() {
-            let result = collect_files_by_extension(test_dir, "md").unwrap();
+            let result = collect_files_by_extension(&test_dir, "md").unwrap();
 
             for path in &result {
                 let path_str = path.to_str().unwrap();
@@ -524,12 +534,12 @@ mod tests {
     #[test]
     fn test_convert_directory_with_mixed_files() {
         // Use the pre-created test fixtures in tests/fixtures/mixed_files
-        let input_dir = Path::new("tests/fixtures/mixed_files");
+        let input_dir = fixture_path("mixed_files");
         let output_dir = assert_fs::TempDir::new().unwrap();
         
         // Perform conversion
         let stats = convert_directory(
-            input_dir,
+            &input_dir,
             output_dir.path(),
             false,
         ).unwrap();
