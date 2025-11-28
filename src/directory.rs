@@ -327,10 +327,11 @@ pub fn convert_directory(src_dir: &Path, dest_dir: &Path, verbose: bool) -> Resu
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use assert_fs::prelude::*;
 
     #[test]
     fn test_detect_input_type_file() {
-        let path = PathBuf::from("fixtures/simple.md");
+        let path = PathBuf::from("tests/fixtures/simple.md");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::File(path.clone()));
@@ -338,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_detect_input_type_directory() {
-        let path = PathBuf::from("fixtures");
+        let path = PathBuf::from("tests/fixtures");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::Directory(path.clone()));
@@ -368,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_detect_input_type_txt_file() {
-        let path = PathBuf::from("fixtures/simple.txt"); // Assuming simple.txt exists for test
+        let path = PathBuf::from("tests/fixtures/simple.txt");
         let result = detect_input_type(&path);
 
         assert_eq!(result, InputType::File(path.clone()));
@@ -376,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_md() {
-        let result = collect_files_by_extension(Path::new("fixtures"), "md").unwrap();
+        let result = collect_files_by_extension(Path::new("tests/fixtures"), "md").unwrap();
 
         assert_eq!(result.len(), 6);
 
@@ -387,8 +388,7 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_txt() {
-        // Need to create a temporary .txt file in fixtures for this test
-        let test_dir = Path::new("fixtures");
+        let test_dir = Path::new("tests/fixtures");
         let txt_file_path = test_dir.join("temp_test.txt");
         std::fs::write(&txt_file_path, "test content").unwrap();
 
@@ -525,17 +525,12 @@ mod tests {
     fn test_convert_directory_with_mixed_files() {
         // Use the pre-created test fixtures in tests/fixtures/mixed_files
         let input_dir = Path::new("tests/fixtures/mixed_files");
-        let output_dir = Path::new("test_output/mixed_files_output");
-        
-        // Clean up output directory if it exists from previous test runs
-        if output_dir.exists() {
-            fs::remove_dir_all(output_dir).unwrap();
-        }
+        let output_dir = assert_fs::TempDir::new().unwrap();
         
         // Perform conversion
         let stats = convert_directory(
             input_dir,
-            output_dir,
+            output_dir.path(),
             false,
         ).unwrap();
 
@@ -545,35 +540,37 @@ mod tests {
         assert!(!stats.has_failures());
 
         // Assert output files
-        let expected_toml_path = output_dir.join("test.toml");
-        let expected_txt_path = output_dir.join("note.txt");
-        let expected_sub_toml_path = output_dir.join("sub").join("sub_test.toml");
-        let expected_sub_txt_path = output_dir.join("sub").join("sub_note.txt");
-
-        assert!(expected_toml_path.exists());
-        assert!(expected_txt_path.exists());
-        assert!(expected_sub_toml_path.exists());
-        assert!(expected_sub_txt_path.exists());
+        output_dir.child("test.toml")
+            .assert(predicates::path::exists());
+        output_dir.child("note.txt")
+            .assert(predicates::path::exists());
+        output_dir.child("sub").child("sub_test.toml")
+            .assert(predicates::path::exists());
+        output_dir.child("sub").child("sub_note.txt")
+            .assert(predicates::path::exists());
 
         // Verify content for .toml files
-        let toml_output = fs::read_to_string(&expected_toml_path).unwrap();
+        let toml_output = fs::read_to_string(output_dir.child("test.toml")).unwrap();
         assert!(toml_output.contains("title = \"Test Title\""));
         assert!(toml_output.contains("description = \"Test Description\""));
         assert!(toml_output.contains("prompt = \"\"\"\n# Hello Markdown\n\"\"\""));
 
-        let sub_toml_output = fs::read_to_string(&expected_sub_toml_path).unwrap();
+        let sub_toml_output = fs::read_to_string(
+            output_dir.child("sub").child("sub_test.toml")
+        ).unwrap();
         assert!(sub_toml_output.contains("title = \"Sub Title\""));
         assert!(sub_toml_output.contains("description = \"Sub Description\""));
         assert!(sub_toml_output.contains("prompt = \"\"\"\nSub Markdown\n\"\"\""));
 
         // Verify content for .txt files
-        let txt_output = fs::read_to_string(&expected_txt_path).unwrap();
+        let txt_output = fs::read_to_string(output_dir.child("note.txt")).unwrap();
         assert_eq!(txt_output, "This is a plain text file.");
 
-        let sub_txt_output = fs::read_to_string(&expected_sub_txt_path).unwrap();
+        let sub_txt_output = fs::read_to_string(
+            output_dir.child("sub").child("sub_note.txt")
+        ).unwrap();
         assert_eq!(sub_txt_output, "Sub plain text file.");
 
-        // Cleanup: Remove the test output directory
-        fs::remove_dir_all(output_dir).unwrap();
+        // TempDir will auto-cleanup when it goes out of scope
     }
 }

@@ -77,7 +77,7 @@ fn test_convert_directory_with_nested_structure() {
 
 #[test]
 fn test_convert_directory_with_validation_failures() {
-    let input_dir = Path::new("fixtures");
+    let input_dir = Path::new("tests/fixtures");
     let output_dir = assert_fs::TempDir::new().unwrap();
 
     let stats = md2toml::convert_directory(

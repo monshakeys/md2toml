@@ -4,7 +4,7 @@ use pretty_assertions::assert_eq;
 
 fn get_fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("fixtures")
+        .join("tests/fixtures")
         .join(name)
 }
 
