@@ -141,7 +141,7 @@ pub fn collect_files_by_extension(dir: &Path, extension: &str) -> Result<Vec<Pat
 /// ```
 pub fn map_output_base_path(src: &Path, src_root: &Path, dest_root: &Path) -> Result<PathBuf> {
     let relative = src.strip_prefix(src_root)
-        .map_err(|_| Md2TomlError::InvalidFrontmatter(
+        .map_err(|_| Md2TomlError::PathError(
             format!("Failed to get relative path: {:?} from {:?}", src, src_root)
         ))?;
 
@@ -182,9 +182,26 @@ impl ConversionStats {
 }
 
 /// Prompts user to confirm overwriting an existing directory
+///
+/// In non-interactive environments (CI/CD), prints a clear error message
+/// with instructions on how to handle existing directories.
 pub fn confirm_overwrite(path: &Path) -> bool {
-    use std::io::{self, Write};
+    use std::io::{self, Write, IsTerminal};
 
+    // Check if running in interactive mode (TTY)
+    if !io::stdin().is_terminal() {
+        eprintln!("\n{}", "=".repeat(60));
+        eprintln!("ERROR: Output directory already exists: {:?}", path);
+        eprintln!("\nIn CI/CD or scripted environments, you must:");
+        eprintln!("  1. Remove the directory before running:");
+        eprintln!("     rm -rf {:?}", path);
+        eprintln!("  2. Or specify a different output path:");
+        eprintln!("     md2toml <input> -o <different_path>");
+        eprintln!("{}\n", "=".repeat(60));
+        return false;
+    }
+
+    // Interactive mode: prompt user
     print!("Directory {:?} already exists. Overwrite? [y/N]: ", path);
     io::stdout().flush().unwrap();
 
@@ -251,8 +268,11 @@ pub fn convert_directory(src_dir: &Path, dest_dir: &Path, verbose: bool) -> Resu
     const RESET: &str = "\x1b[0m";
     
     // Collect all files to process based on SUPPORTED_FILE_TYPES
+    // Note: We traverse the directory once per file type for code clarity.
+    // If supporting many file types becomes a performance concern,
+    // this can be optimized to a single traversal with extension matching.
     let mut all_files: Vec<(PathBuf, &FileTypeConfig)> = Vec::new();
-    
+
     for config in SUPPORTED_FILE_TYPES {
         let files = collect_files_by_extension(src_dir, config.source_extension)?;
         for file in files {
@@ -397,24 +417,25 @@ mod tests {
 
     #[test]
     fn test_collect_files_by_extension_txt() {
-        let test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-        let txt_file_path = test_dir.join("temp_test.txt");
-        std::fs::write(&txt_file_path, "test content").unwrap();
+        // Create isolated temporary directory for this test
+        let temp_dir = assert_fs::TempDir::new().unwrap();
 
-        let result = collect_files_by_extension(&test_dir, "txt").unwrap();
+        // Create test txt files directly in temp directory
+        temp_dir.child("simple.txt").write_str("simple text content").unwrap();
+        temp_dir.child("temp_test.txt").write_str("test content").unwrap();
 
-        // Check if simple.txt and temp_test.txt are found
+        let result = collect_files_by_extension(temp_dir.path(), "txt").unwrap();
+
+        // Check if both txt files are found
         assert!(result.iter().any(|p| p.file_name().unwrap() == "simple.txt"));
         assert!(result.iter().any(|p| p.file_name().unwrap() == "temp_test.txt"));
-        // simple.txt + temp_test.txt + 2 from mixed_files = 4
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.len(), 2);
 
         for path in result {
             assert_eq!(path.extension(), Some("txt".as_ref()));
         }
 
-        // Clean up
-        std::fs::remove_file(&txt_file_path).unwrap();
+        // TempDir will auto-cleanup when it goes out of scope
     }
 
     #[test]

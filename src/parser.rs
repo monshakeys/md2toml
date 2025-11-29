@@ -1,6 +1,45 @@
 use std::collections::BTreeMap;
 use crate::error::{Result, Md2TomlError};
 
+/// Converts a YAML Value to a single-line flow-style string
+///
+/// This function formats YAML sequences and mappings in a compact, human-readable format
+/// without JSON-style escaping (e.g., `[rust, cli]` instead of `["rust","cli"]`).
+fn value_to_flow_style(value: &serde_yaml::Value) -> String {
+    match value {
+        serde_yaml::Value::String(s) => {
+            if s.is_empty()
+                || s.contains([',', ':', '[', ']', '{', '}'])
+                || s.trim() != s
+            {
+                format!("\"{}\"", s.replace('\\', "\\\\").replace('\"', "\\\""))
+            } else {
+                s.clone()
+            }
+        }
+        serde_yaml::Value::Number(n) => n.to_string(),
+        serde_yaml::Value::Bool(b) => b.to_string(),
+        serde_yaml::Value::Null => "null".to_string(),
+        serde_yaml::Value::Sequence(seq) => {
+            let items: Vec<String> = seq.iter()
+                .map(|v| value_to_flow_style(v))
+                .collect();
+            format!("[{}]", items.join(", "))
+        }
+        serde_yaml::Value::Mapping(map) => {
+            let pairs: Vec<String> = map.iter()
+                .map(|(k, v)| {
+                    let key = k.as_str().unwrap_or("");
+                    let val = value_to_flow_style(v);
+                    format!("{}: {}", key, val)
+                })
+                .collect();
+            format!("{{{}}}", pairs.join(", "))
+        }
+        _ => String::new(),
+    }
+}
+
 /// Parsed markdown structure containing metadata and content
 ///
 /// Uses `BTreeMap` for automatic alphabetical sorting of metadata keys.
@@ -62,7 +101,11 @@ pub fn parse_markdown(markdown: &str) -> Result<ParsedMarkdown> {
                         serde_yaml::Value::String(s) => s,
                         serde_yaml::Value::Number(n) => n.to_string(),
                         serde_yaml::Value::Bool(b) => b.to_string(),
-                        _ => value.as_str().unwrap_or("").to_string(),
+                        serde_yaml::Value::Null => String::new(),
+                        serde_yaml::Value::Sequence(_) | serde_yaml::Value::Mapping(_) => {
+                            value_to_flow_style(&value)
+                        }
+                        _ => String::new(),
                     };
                     result.insert(k, v);
                 }
@@ -368,5 +411,86 @@ Special chars: @#$%^&*()"#;
 
         let result = validate_required_fields(&metadata);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_frontmatter_with_sequence() {
+        let input = r#"---
+title: Test
+description: Test Description
+tags:
+  - rust
+  - cli
+  - converter
+---
+Content"#;
+
+        let result = parse_frontmatter(input).unwrap();
+
+        assert_eq!(result.get("title").unwrap(), "Test");
+        assert_eq!(result.get("description").unwrap(), "Test Description");
+        // Should be formatted as flow-style: [rust, cli, converter]
+        assert_eq!(result.get("tags").unwrap(), "[rust, cli, converter]");
+    }
+
+    #[test]
+    fn test_parse_frontmatter_with_mapping() {
+        let input = r#"---
+title: Test
+description: Test Description
+config:
+  verbose: true
+  timeout: 30
+---
+Content"#;
+
+        let result = parse_frontmatter(input).unwrap();
+
+        assert_eq!(result.get("title").unwrap(), "Test");
+        assert_eq!(result.get("description").unwrap(), "Test Description");
+        // Should be formatted as flow-style: {verbose: true, timeout: 30}
+        let config = result.get("config").unwrap();
+        assert!(config.contains("verbose: true"));
+        assert!(config.contains("timeout: 30"));
+        assert!(config.starts_with('{'));
+        assert!(config.ends_with('}'));
+    }
+
+    #[test]
+    fn test_parse_frontmatter_with_nested_sequence() {
+        let input = r#"---
+title: Test
+description: Test Description
+matrix:
+  - [a, b]
+  - [c, d]
+---
+Content"#;
+
+        let result = parse_frontmatter(input).unwrap();
+
+        // Should be formatted as flow-style: [[a, b], [c, d]]
+        assert_eq!(result.get("matrix").unwrap(), "[[a, b], [c, d]]");
+    }
+
+    #[test]
+    fn test_parse_frontmatter_with_special_chars_in_sequence() {
+        let input = r#"---
+title: Test
+description: Test Description
+items:
+  - "hello, world"
+  - "test: 123"
+  - normal
+---
+Content"#;
+
+        let result = parse_frontmatter(input).unwrap();
+
+        // Special characters should be quoted
+        let items = result.get("items").unwrap();
+        assert!(items.contains("\"hello, world\""));
+        assert!(items.contains("\"test: 123\""));
+        assert!(items.contains("normal"));
     }
 }

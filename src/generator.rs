@@ -10,21 +10,17 @@ pub fn generate_toml(metadata: BTreeMap<String, String>, prompt: String) -> Resu
     let mut output = String::with_capacity(estimated_size);
 
     for (key, value) in &metadata {
-        // Escape double quotes in values
         let escaped_value = value.replace('"', "\\\"");
         output.push_str(&format!("{} = \"{}\"\n", key, escaped_value));
     }
 
-    // Add blank line between metadata and prompt if metadata exists
     if !metadata.is_empty() {
         output.push('\n');
     }
 
-    // Write prompt as multi-line string
     output.push_str("prompt = \"\"\"\n");
     output.push_str(&prompt);
 
-    // Only add newline before closing """ if prompt is not empty or doesn't end with newline
     if !prompt.is_empty() && !prompt.ends_with('\n') {
         output.push('\n');
     }

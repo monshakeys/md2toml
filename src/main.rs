@@ -112,8 +112,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Converts a single markdown file to TOML format
+/// Processes a single file based on its extension
 fn convert_single_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
+    // Determine processing strategy based on file extension
+    let ext = input.extension()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow::anyhow!("Cannot determine file extension"))?;
+
+    match ext {
+        "md" => convert_markdown_file(input, output),
+        "txt" => copy_text_file(input, output),
+        _ => Err(anyhow::anyhow!("Unsupported file type: .{}", ext)),
+    }
+}
+
+/// Converts a single markdown file to TOML format
+fn convert_markdown_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
     print_info(&format!("Converting: {}", input.display()));
 
     // Read input file
@@ -150,10 +164,30 @@ fn convert_single_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
+/// Copies a text file as-is
+fn copy_text_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
+    print_info(&format!("Copying: {}", input.display()));
+
+    // Determine output path (keep .txt extension)
+    let output_path = output.unwrap_or_else(|| input.clone());
+
+    // Copy file
+    fs::copy(&input, &output_path)
+        .with_context(|| format!("Failed to copy file from {:?} to {:?}", input, output_path))?;
+
+    print_success(&format!("Copied: {}", output_path.display()));
+
+    Ok(())
+}
+
 /// Converts all markdown files in a directory to TOML format
 fn convert_directory_mode(input_dir: PathBuf, output: Option<PathBuf>, verbose: bool) -> Result<()> {
     let output_dir = output.unwrap_or_else(|| {
-        let dir_name = input_dir.file_name().unwrap().to_str().unwrap();
+        let dir_name = input_dir
+            .file_name()
+            .expect("BUG: input_dir should have been validated by detect_input_type")
+            .to_str()
+            .expect("BUG: directory name contains non-UTF8 characters");
         PathBuf::from(format!("{}_toml", dir_name))
     });
 

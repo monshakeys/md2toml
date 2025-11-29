@@ -8,6 +8,9 @@ pub enum Md2TomlError {
     #[error("Invalid frontmatter format: {0}")]
     InvalidFrontmatter(String),
 
+    #[error("Path error: {0}")]
+    PathError(String),
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 

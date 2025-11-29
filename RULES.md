@@ -30,6 +30,13 @@ Parses the metadata block of files.
 - Special Handling:
   - Numbers are automatically converted to strings (`42` → `"42"`)
   - Booleans are automatically converted to strings (`true` → `"true"`)
+  - Sequences (arrays) are converted to flow-style format (`[rust, cli, tool]`)
+  - Mappings (objects) are converted to flow-style format (`{key: value, key2: value2}`)
+  - Nested structures are supported (`[[a, b], [c, d]]`, `{config: {verbose: true}}`)
+- Format Details:
+  - Flow-style is human-readable without JSON escaping (e.g., `[rust, cli]` not `["rust","cli"]`)
+  - Strings with special characters are automatically quoted (`"hello, world"`)
+  - All values are stored as single-line strings for TOML compatibility
 
 ### Rule 1.5: Supported File Types and Processing Strategies
 
