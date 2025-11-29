@@ -17,7 +17,7 @@ fn convert_md_to_toml(input: &str) -> Result<String, Box<dyn std::error::Error>>
     let metadata = md2toml::parse_frontmatter(input)?;
     let content = md2toml::extract_content(input)?;
     let processed = md2toml::apply_all_replacements(&content);
-    let toml = md2toml::generate_toml(metadata, processed)?;
+    let toml = md2toml::generate_toml(&metadata, &processed)?;
     Ok(toml)
 }
 
@@ -27,7 +27,7 @@ fn convert_md_to_toml_with_validation(input: &str) -> Result<String, Box<dyn std
     md2toml::validate_required_fields(&metadata)?;
     let content = md2toml::extract_content(input)?;
     let processed = md2toml::apply_all_replacements(&content);
-    let toml = md2toml::generate_toml(metadata, processed)?;
+    let toml = md2toml::generate_toml(&metadata, &processed)?;
     Ok(toml)
 }
 

@@ -146,7 +146,7 @@ fn convert_markdown_file(input: PathBuf, output: Option<PathBuf>) -> Result<()> 
     let processed_content = md2toml::apply_all_replacements(&content);
 
     // Generate TOML
-    let toml_output = md2toml::generate_toml(metadata, processed_content)?;
+    let toml_output = md2toml::generate_toml(&metadata, &processed_content)?;
 
     // Determine output path
     let output_path = output.unwrap_or_else(|| {

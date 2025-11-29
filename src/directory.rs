@@ -168,8 +168,8 @@ impl ConversionStats {
         self.success += 1;
     }
 
-    pub fn add_failure(&mut self, path: PathBuf, error: String) {
-        self.failed.push((path, error));
+    pub fn add_failure(&mut self, path: PathBuf, error: &str) {
+        self.failed.push((path, error.to_string()));
     }
 
     pub fn add_skipped(&mut self) {
@@ -228,7 +228,7 @@ fn convert_single_file(src: &Path, dest: &Path) -> Result<()> {
     crate::validate_required_fields(&metadata)?;
     let content = crate::extract_content(&input_content)?;
     let processed_content = crate::apply_all_replacements(&content);
-    let toml_output = crate::generate_toml(metadata, processed_content)?;
+    let toml_output = crate::generate_toml(&metadata, &processed_content)?;
 
     ensure_parent_dir(dest)?;
     fs::write(dest, toml_output)?;
@@ -327,7 +327,7 @@ pub fn convert_directory(src_dir: &Path, dest_dir: &Path, verbose: bool) -> Resu
                 }
             }
             Err(e) => {
-                stats.add_failure(src_path.clone(), e.to_string());
+                stats.add_failure(src_path.clone(), &e.to_string());
                 if verbose {
                     println!(" {}✗{}", RED, RESET);
                     eprintln!("  {}└─ Error: {}{}", DIM, e, RESET);
@@ -472,7 +472,7 @@ mod tests {
         stats.add_success();
         assert_eq!(stats.success, 2);
 
-        stats.add_failure(PathBuf::from("test.md"), "error".to_string());
+        stats.add_failure(PathBuf::from("test.md"), "error");
         assert!(stats.has_failures());
         assert_eq!(stats.failed.len(), 1);
     }
