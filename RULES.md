@@ -199,7 +199,7 @@ let step2 = replace_backtick_patterns(&step1);  // !`cmd` → !{cmd}
 #### Step 4: Generate
 
 ```rust
-let toml_output = generate_toml(metadata, processed_content)?;
+let toml_output = generate_toml(&metadata, &processed_content)?;
 ```
 
 **Output Format**:
