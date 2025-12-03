@@ -152,3 +152,16 @@ Output:
 
 - Gemini CLI: [Gemini CLI Custom Commands](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/custom-commands.md)
 - Claude Code: [Claude Code Custom Slash Commands](https://code.claude.com/docs/en/slash-commands#custom-slash-commands)
+
+
+## FAQ
+### Why no reverse conversion?  (Gemini CLI to Claude Code)
+
+- Short answer: Never!
+- The technical reason: This is a matter of **architectural asymmetry**. Claude Code and Gemini CLI serve fundamentally different design philosophies. Converting `cc → gc` is a projection; converting back is hallucination.
+  > - **Claude Code (cc)** is an engine for **High-Context Engineering**. It operates on massive *implicit state*: cursor position, active selection, dependency trees, and conversational history. It is dynamic, semantic, and alive.
+  > - **Gemini CLI (gc)** is a tool for **Deterministic Automation**. Its TOML format is designed to be static, portable, and explicit. It is low-context by design.
+
+---
+
+*P.S. This entire project was built **with no code**. Every line of Rust, every test, and every optimization is the product of **context engineering**.*
