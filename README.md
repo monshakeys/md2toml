@@ -158,7 +158,7 @@ Output:
 ### Why no reverse conversion?  (Gemini CLI to Claude Code)
 
 - Short answer: Never!
-- The technical reason: This is a matter of **architectural asymmetry**. Claude Code and Gemini CLI serve fundamentally different design philosophies. Converting `cc → gc` is a projection; converting back is hallucination.
+- The technical reason: This is a matter of **architectural asymmetry**. Claude Code and Gemini CLI serve fundamentally different design philosophies. Converting **from Claude Code to Gemini CLI** is a projection; converting back is hallucination.
   > - **Claude Code (cc)** is an engine for **High-Context Engineering**. It operates on massive *implicit state*: cursor position, active selection, dependency trees, and conversational history. It is dynamic, semantic, and alive.
   > - **Gemini CLI (gc)** is a tool for **Deterministic Automation**. Its TOML format is designed to be static, portable, and explicit. It is low-context by design.
 
