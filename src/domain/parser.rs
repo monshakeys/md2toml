@@ -1,5 +1,10 @@
+// Domain Layer - Markdown Parsing Logic
+//
+// Pure business logic for parsing markdown frontmatter and content.
+// No infrastructure dependencies, no I/O operations.
+
+use crate::domain::errors::{Md2TomlError, Result};
 use std::collections::BTreeMap;
-use crate::error::{Result, Md2TomlError};
 
 /// Converts a YAML Value to a single-line flow-style string
 ///
@@ -8,10 +13,7 @@ use crate::error::{Result, Md2TomlError};
 fn value_to_flow_style(value: &serde_yaml::Value) -> String {
     match value {
         serde_yaml::Value::String(s) => {
-            if s.is_empty()
-                || s.contains([',', ':', '[', ']', '{', '}'])
-                || s.trim() != s
-            {
+            if s.is_empty() || s.contains([',', ':', '[', ']', '{', '}']) || s.trim() != s {
                 format!("\"{}\"", s.replace('\\', "\\\\").replace('\"', "\\\""))
             } else {
                 s.clone()
@@ -21,13 +23,12 @@ fn value_to_flow_style(value: &serde_yaml::Value) -> String {
         serde_yaml::Value::Bool(b) => b.to_string(),
         serde_yaml::Value::Null => "null".to_string(),
         serde_yaml::Value::Sequence(seq) => {
-            let items: Vec<String> = seq.iter()
-                .map(|v| value_to_flow_style(v))
-                .collect();
+            let items: Vec<String> = seq.iter().map(value_to_flow_style).collect();
             format!("[{}]", items.join(", "))
         }
         serde_yaml::Value::Mapping(map) => {
-            let pairs: Vec<String> = map.iter()
+            let pairs: Vec<String> = map
+                .iter()
                 .map(|(k, v)| {
                     let key = k.as_str().unwrap_or("");
                     let val = value_to_flow_style(v);
@@ -40,20 +41,12 @@ fn value_to_flow_style(value: &serde_yaml::Value) -> String {
     }
 }
 
-/// Parsed markdown structure containing metadata and content
-///
-/// Uses `BTreeMap` for automatic alphabetical sorting of metadata keys.
-pub struct ParsedMarkdown {
-    pub metadata: BTreeMap<String, String>,
-    pub content: String,
-}
-
 /// Parses frontmatter and content in a single pass
 ///
 /// Avoids redundant scans by finding the `---` delimiter only once.
-pub fn parse_markdown(markdown: &str) -> Result<ParsedMarkdown> {
+pub fn parse_markdown(markdown: &str) -> Result<crate::domain::models::ParsedMarkdown> {
     if !markdown.starts_with("---") {
-        return Ok(ParsedMarkdown {
+        return Ok(crate::domain::models::ParsedMarkdown {
             metadata: BTreeMap::new(),
             content: markdown.to_string(),
         });
@@ -61,7 +54,7 @@ pub fn parse_markdown(markdown: &str) -> Result<ParsedMarkdown> {
 
     let lines: Vec<&str> = markdown.lines().collect();
     if lines.is_empty() {
-        return Ok(ParsedMarkdown {
+        return Ok(crate::domain::models::ParsedMarkdown {
             metadata: BTreeMap::new(),
             content: String::new(),
         });
@@ -78,7 +71,7 @@ pub fn parse_markdown(markdown: &str) -> Result<ParsedMarkdown> {
     let end_index = match end_index {
         Some(idx) => idx,
         None => {
-            return Ok(ParsedMarkdown {
+            return Ok(crate::domain::models::ParsedMarkdown {
                 metadata: BTreeMap::new(),
                 content: markdown.to_string(),
             });
@@ -124,36 +117,36 @@ pub fn parse_markdown(markdown: &str) -> Result<ParsedMarkdown> {
     }
 
     let content = if char_pos < markdown.len() {
-        &markdown[char_pos..]
+        markdown.chars().skip(char_pos).collect::<String>()
     } else {
-        ""
+        "".to_string()
     };
 
-    let content = if content.starts_with('\n') {
-        &content[1..]
+    let content = if let Some(stripped) = content.strip_prefix('\n') {
+        stripped.to_string()
     } else {
         content
     };
 
-    let content = content.strip_suffix('\n').unwrap_or(content);
+    let content = if let Some(stripped) = content.strip_suffix('\n') {
+        stripped.to_string()
+    } else {
+        content
+    };
 
-    Ok(ParsedMarkdown {
+    Ok(crate::domain::models::ParsedMarkdown {
         metadata,
         content: content.to_string(),
     })
 }
 
 /// Extracts YAML frontmatter metadata from markdown
-///
-/// Maintained for backward compatibility; internally calls `parse_markdown`.
 pub fn parse_frontmatter(content: &str) -> Result<BTreeMap<String, String>> {
     let parsed = parse_markdown(content)?;
     Ok(parsed.metadata)
 }
 
 /// Extracts content after frontmatter
-///
-/// Maintained for backward compatibility; internally calls `parse_markdown`.
 pub fn extract_content(markdown: &str) -> Result<String> {
     let parsed = parse_markdown(markdown)?;
     Ok(parsed.content)
@@ -164,10 +157,47 @@ pub fn extract_content(markdown: &str) -> Result<String> {
 pub fn validate_required_fields(metadata: &BTreeMap<String, String>) -> Result<()> {
     if !metadata.contains_key("title") || !metadata.contains_key("description") {
         return Err(Md2TomlError::InvalidFrontmatter(
-            "This is not a markdown file for cc slash command.".to_string()
+            "This is not a markdown file for cc slash command.".to_string(),
         ));
     }
     Ok(())
+}
+
+/// Converts markdown content to TOML format (pure function, no I/O)
+///
+/// This function encapsulates the entire conversion process:
+/// 1. Parse frontmatter
+/// 2. Validate required fields
+/// 3. Extract content
+/// 4. Apply replacements
+/// 5. Generate TOML
+///
+/// # Examples
+/// ```
+/// # use md2toml::domain::convert_markdown_to_toml;
+/// let markdown = r#"---
+/// title: Test
+/// description: Test description
+/// ---
+///
+/// Content with $ARGUMENTS"#;
+///
+/// let toml = convert_markdown_to_toml(markdown).unwrap();
+/// assert!(toml.contains("title = \"Test\""));
+/// assert!(toml.contains("Content with {{args}}"));
+/// ```
+pub fn convert_markdown_to_toml(markdown: &str) -> Result<String> {
+    // Parse frontmatter and content
+    let parsed = parse_markdown(markdown)?;
+
+    // Validate required fields
+    validate_required_fields(&parsed.metadata)?;
+
+    // Apply replacements to content
+    let processed_content = crate::domain::replacer::apply_all_replacements_simple(&parsed.content);
+
+    // Generate TOML output
+    crate::domain::generator::generate_toml(&parsed.metadata, &processed_content)
 }
 
 #[cfg(test)]
@@ -243,7 +273,10 @@ Content"#;
         let result = parse_frontmatter(input).unwrap();
 
         assert_eq!(result.get("path").unwrap(), "/path/to/file");
-        assert_eq!(result.get("url").unwrap(), "https://example.com/page?param=value");
+        assert_eq!(
+            result.get("url").unwrap(),
+            "https://example.com/page?param=value"
+        );
         assert_eq!(result.get("tags").unwrap(), "test, complex, full-featured");
     }
 
@@ -342,7 +375,10 @@ Special chars: @#$%^&*()"#;
 
         let result = extract_content(input).unwrap();
 
-        assert_eq!(result, "Content with $ARGUMENTS and !`commands`\nSpecial chars: @#$%^&*()");
+        assert_eq!(
+            result,
+            "Content with $ARGUMENTS and !`commands`\nSpecial chars: @#$%^&*()"
+        );
     }
 
     #[test]

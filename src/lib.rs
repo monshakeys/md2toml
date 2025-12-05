@@ -1,17 +1,61 @@
-pub mod error;
-pub mod parser;
-pub mod replacer;
-pub mod generator;
-pub mod directory;
+//! md2toml - Slash Commands Converter
+//!
+//! Core-System-First: All business logic is in lib.rs as the system root.
+//! This library provides pure business functions without infrastructure dependencies.
+//!
+//! # Architecture
+//!
+//! - **Domain Layer** (`domain/`): Pure business logic, models, and port definitions
+//! - **Application Layer** (`application.rs`): Use case orchestration and workflows
+//! - **Infrastructure Layer** (`infra/`): I/O implementations (separate crate)
+//!
+//! # Examples
+//!
+//! ```rust
+//! use md2toml::{Md2TomlService, domain::Md2TomlConfig};
+//! use md2toml::infra::{FsAdapter, SimpleLogger};
+//! use std::sync::Arc;
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let config = Md2TomlConfig::default();
+//! let service = Md2TomlService::new(
+//!     Arc::new(Box::new(FsAdapter::new())),
+//!     Arc::new(SimpleLogger), // Use Arc for sharing dependencies
+//!     config,
+//! );
+//!
+//! // Service is ready to use - see actual usage in CLI
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Core-System-First Architecture
+//!
+//! This library implements a clean architecture with clear separation of concerns:
+//!
+//! - **Presentation Layer**: CLI entry point in `src/main.rs`
+//! - **Application Layer**: Use case orchestration in `src/application.rs`
+//! - **Domain Layer**: Pure business logic in `src/domain/`
+//! - **Infrastructure Layer**: I/O implementations in `src/infra/`
 
-pub use error::{Md2TomlError, Result};
+// Domain Layer - Pure business logic
+pub mod domain;
 
-pub use parser::{ParsedMarkdown, parse_markdown, parse_frontmatter, extract_content, validate_required_fields};
-pub use replacer::{replace_arguments, replace_backtick_patterns, apply_all_replacements};
-pub use generator::generate_toml;
+// Application Layer - Use case orchestration
+pub mod application;
 
-pub use directory::{
-    InputType, detect_input_type, collect_files_by_extension, map_output_base_path,
-    ConversionStats, confirm_overwrite, ensure_parent_dir, convert_directory,
-    should_ignore_path,
+// Infrastructure Layer - I/O implementations
+pub mod infra;
+
+// Re-export public API from domain
+pub use domain::{
+    apply_all_replacements_simple, convert_markdown_to_toml, detect_input_type, extract_content, generate_toml,
+    map_output_base_path, parse_frontmatter, replace_arguments, should_ignore_path,
+    validate_required_fields, ConversionStats, DirectoryConversionUseCase, FileType, InputType,
+    Md2TomlError, ParsedMarkdown, ProcessingStrategy, TextReplacer,
 };
+
+pub use application::{Md2TomlService, Md2TomlServiceBuilder};
+
+// Re-export commonly used types for convenience
+pub use domain::errors::Md2TomlError as Error;
