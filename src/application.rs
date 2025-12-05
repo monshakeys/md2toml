@@ -3,6 +3,13 @@
 // Coordinates domain logic with infrastructure ports (traits)
 // Implements business workflows and transaction control.
 
+pub mod config_loader;
+pub mod directory_conversion_use_case;
+
+// Re-export public types for convenience
+pub use config_loader::EnvConfigLoader;
+pub use directory_conversion_use_case::StandardDirectoryConversionUseCase;
+
 use crate::domain::errors::{Md2TomlError, Result};
 use crate::domain::ports::{DirectoryConversionUseCase, FileSystem, Logger};
 use crate::domain::{
@@ -98,8 +105,8 @@ impl Md2TomlService {
                     None => self.default_output_dir(&dir_path)?,
                 };
 
-                // Validate overwrite configuration
-                if std::path::Path::new(&output_dir).exists() && !self.config.overwrite {
+                // Validate overwrite configuration via FileSystem Port
+                if self.fs.exists(&output_dir) && !self.config.overwrite {
                     return Err(Md2TomlError::Config(format!(
                         "Output directory {:?} already exists. Use --overwrite to enable.",
                         output_dir
@@ -186,14 +193,16 @@ impl Md2TomlServiceBuilder {
         self
     }
 
-    pub fn build(self) -> Md2TomlService {
+    pub fn build(self) -> Result<Md2TomlService> {
         let fs = self.fs.expect("FileSystem must be provided");
         let directory_converter = self
             .directory_converter
             .expect("DirectoryConversionUseCase must be provided");
         let logger = self.logger.expect("Logger must be provided");
 
-        Md2TomlService::new(fs, directory_converter, logger, self.config)
+        // Configuration validation is handled by Md2TomlConfig::validate()
+        // which is called when the configuration is created/modified
+        Ok(Md2TomlService::new(fs, directory_converter, logger, self.config))
     }
 }
 
@@ -282,7 +291,7 @@ mod tests {
             .with_logger(Arc::new(MockLogger))
             .with_config(Md2TomlConfig::default());
 
-        let service = builder.build();
+        let service = builder.build().unwrap();
         assert!(service
             .directory_converter
             .convert_directory(Path::new("."), Path::new("test"), false)

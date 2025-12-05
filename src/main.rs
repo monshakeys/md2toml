@@ -12,8 +12,10 @@
 // - Direct domain model manipulation
 
 use clap::Parser;
-use md2toml::infra::{SimpleLogger, StandardDirectoryConversionUseCase};
-use md2toml::{domain::Md2TomlConfig, Md2TomlServiceBuilder};
+use md2toml::application::{EnvConfigLoader, StandardDirectoryConversionUseCase};
+use md2toml::infra::SimpleLogger;
+use md2toml::domain::ports::ConfigLoader;
+use md2toml::Md2TomlServiceBuilder;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
@@ -89,8 +91,20 @@ fn main() {
     let directory_converter = Arc::new(StandardDirectoryConversionUseCase::new(fs.clone()))
         as Arc<dyn md2toml::domain::ports::DirectoryConversionUseCase>;
 
-    // Build configuration
-    let mut config = Md2TomlConfig::default()
+    // Load configuration using ConfigLoader Port
+    // This allows for different configuration sources (env, files, etc.)
+    let config_loader = EnvConfigLoader::new();
+    let mut config = match config_loader.load_from_env() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("Failed to load configuration from environment: {}", e);
+            process::exit(1);
+        }
+    };
+
+    // Apply command-line argument overrides
+    // CLI args take precedence over environment variables
+    config = config
         .verbose()
         .with_skip_hidden(args.skip_hidden)
         .with_overwrite(args.overwrite);
@@ -99,21 +113,23 @@ fn main() {
         config = config.parallel(args.workers);
     }
 
-    // Validate configuration
-    if let Err(e) = config.validate() {
-        // Presentation layer handles configuration errors
-        eprintln!("Configuration error: {}", e);
-        process::exit(1);
-    }
-
     // Build service with Arc-based dependency injection
     // Follows Rust guidelines: Arc<T> for sharing dependencies
-    let service = Md2TomlServiceBuilder::new()
+    // Configuration validation happens in Application layer
+    let service = match Md2TomlServiceBuilder::new()
         .with_filesystem(fs.clone())
         .with_directory_converter(directory_converter)
         .with_logger(logger.clone())
         .with_config(config)
-        .build();
+        .build()
+    {
+        Ok(service) => service,
+        Err(e) => {
+            // Presentation layer handles error formatting
+            eprintln!("Configuration error: {}", e);
+            process::exit(1);
+        }
+    };
 
     // Execute conversion
     match service.convert(args.input, args.output) {

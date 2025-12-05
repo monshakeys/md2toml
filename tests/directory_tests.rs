@@ -4,8 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use md2toml::application::StandardDirectoryConversionUseCase;
 use md2toml::domain::ports::DirectoryConversionUseCase;
-use md2toml::infra::{FsAdapter, StandardDirectoryConversionUseCase};
+use md2toml::infra::FsAdapter;
 
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

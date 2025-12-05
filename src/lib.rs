@@ -12,8 +12,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use md2toml::{Md2TomlService, Md2TomlServiceBuilder, domain::Md2TomlConfig};
-//! use md2toml::infra::{FsAdapter, SimpleLogger, StandardDirectoryConversionUseCase};
+//! use md2toml::{Md2TomlService, Md2TomlServiceBuilder, StandardDirectoryConversionUseCase, domain::Md2TomlConfig};
+//! use md2toml::infra::{FsAdapter, SimpleLogger};
 //! use std::sync::Arc;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,7 +58,9 @@ pub use domain::{
     Md2TomlError, ParsedMarkdown, ProcessingStrategy, TextReplacer,
 };
 
-pub use application::{Md2TomlService, Md2TomlServiceBuilder};
+pub use application::{
+    EnvConfigLoader, Md2TomlService, Md2TomlServiceBuilder, StandardDirectoryConversionUseCase,
+};
 
 // Re-export commonly used types for convenience
 pub use domain::errors::Md2TomlError as Error;
