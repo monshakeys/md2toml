@@ -73,8 +73,15 @@ impl FileSystem for FsAdapter {
     }
 
     fn metadata(&self, path: &Path) -> Result<FileMetadata> {
-        let fs_metadata = fs::metadata(path).map_err(|_| Md2TomlError::IoError)?;
-        Ok(FileMetadata::from_fs_metadata(&fs_metadata))
+        let fs_metadata = fs::metadata(path).map_err(|e| {
+            Md2TomlError::FileSystem(format!("Failed to read metadata for {:?}: {}", path, e))
+        })?;
+
+        Ok(FileMetadata::new(
+            fs_metadata.len(),
+            fs_metadata.is_dir(),
+            fs_metadata.modified().ok(),
+        ))
     }
 
     fn list_files_with_extension(&self, dir: &Path, extension: &str) -> Result<Vec<PathBuf>> {

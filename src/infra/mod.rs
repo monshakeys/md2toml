@@ -11,10 +11,7 @@ pub mod logger;
 pub mod regex_service;
 
 pub use config_loader::EnvConfigLoader;
-pub use directory::{
-    collect_files_by_extension, convert_directory, convert_directory_with_default_fs,
-    ensure_parent_dir,
-};
+pub use directory::{collect_files_by_extension, ensure_parent_dir};
 pub use directory_conversion_use_case::StandardDirectoryConversionUseCase;
 pub use directory_explorer::StandardDirectoryExplorer;
 pub use fs_adapter::FsAdapter;

@@ -4,10 +4,10 @@
 // Implements business workflows and transaction control.
 
 use crate::domain::errors::{Md2TomlError, Result};
-use crate::domain::ports::{FileSystem, Logger};
+use crate::domain::ports::{DirectoryConversionUseCase, FileSystem, Logger};
 use crate::domain::{
-    apply_all_replacements_simple, extract_content, generate_toml, parse_frontmatter,
-    validate_required_fields, ConversionStats, InputType, Md2TomlConfig,
+    detect_input_type, extract_content, generate_toml, parse_frontmatter, validate_required_fields,
+    ConversionStats, InputType, Md2TomlConfig,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -17,38 +17,44 @@ use std::sync::Arc;
 /// Orchestrates use cases and coordinates between domain logic
 /// and infrastructure adapters.
 pub struct Md2TomlService {
-    fs: Arc<Box<dyn FileSystem>>,
+    fs: Arc<dyn FileSystem>,
+    directory_converter: Arc<dyn DirectoryConversionUseCase>,
     logger: Arc<dyn Logger>,
     config: Md2TomlConfig,
 }
 
 impl Md2TomlService {
-    /// Create new service with dependency injection using Arc for sharing
+    /// Create new service with dependency injection
     pub fn new(
-        fs: Arc<Box<dyn FileSystem>>,
+        fs: Arc<dyn FileSystem>,
+        directory_converter: Arc<dyn DirectoryConversionUseCase>,
         logger: Arc<dyn Logger>,
         config: Md2TomlConfig,
     ) -> Self {
-        Self { fs, logger, config }
+        Self {
+            fs,
+            directory_converter,
+            logger,
+            config,
+        }
     }
 
     /// Convert a single file to TOML format
     fn convert_single_file(&self, input: PathBuf, output: Option<PathBuf>) -> Result<()> {
         self.logger.info("Starting file conversion");
 
-        // Read input file
-        let input_content = self.fs.read_to_string(&input)?;
+        // Parse metadata and content using FileSystem port
+        let content = self.fs.read_to_string(&input)?;
         self.logger
             .debug(&format!("Read file: {:?}", input.display()));
 
-        // Parse metadata and content
-        let metadata = parse_frontmatter(&input_content)?;
+        let metadata = parse_frontmatter(&content)?;
         validate_required_fields(&metadata)?;
 
-        let content = extract_content(&input_content)?;
+        let content = extract_content(&content)?;
 
         // Apply replacements
-        let processed_content = apply_all_replacements_simple(&content);
+        let processed_content = crate::domain::apply_all_replacements_simple(&content);
 
         // Generate TOML
         let toml_output = generate_toml(&metadata, &processed_content)?;
@@ -63,7 +69,7 @@ impl Md2TomlService {
         self.logger
             .debug(&format!("Writing to: {:?}", output_path.display()));
 
-        // Write output file
+        // Write output file via FileSystem port
         self.fs.write(&output_path, &toml_output)?;
 
         self.logger.info("File conversion completed");
@@ -76,9 +82,7 @@ impl Md2TomlService {
         self.logger
             .info(&format!("Starting conversion: {:?}", input.display()));
 
-        // Use pure domain function - no I/O validation in Application layer
-        // Validation should happen in Presentation layer before calling this method
-        let result = match crate::domain::detect_input_type(&input) {
+        let result = match detect_input_type(&input) {
             InputType::File(file_path) => {
                 self.convert_single_file(file_path, output)?;
                 Ok(ConversionStats {
@@ -94,21 +98,20 @@ impl Md2TomlService {
                     None => self.default_output_dir(&dir_path)?,
                 };
 
-                // Application layer does NOT handle directory traversal or I/O
-                // It only validates the configuration and delegates to domain logic
-                // Directory conversion is handled by Presentation layer via dependency injection
-
-                // Validate overwrite configuration at application layer
-                if self.fs.exists(&output_dir) && !self.config.overwrite {
+                // Validate overwrite configuration
+                if std::path::Path::new(&output_dir).exists() && !self.config.overwrite {
                     return Err(Md2TomlError::Config(format!(
                         "Output directory {:?} already exists. Use --overwrite to enable.",
                         output_dir
                     )));
                 }
 
-                // Pure domain logic: directory conversion statistics
-                // Actual I/O operations are delegated to infrastructure through Presentation layer
-                let stats = self.convert_directory_with_injected_fs(&dir_path, &output_dir)?;
+                // Delegate directory conversion to the use case
+                let stats = self.directory_converter.convert_directory(
+                    &dir_path,
+                    &output_dir,
+                    self.config.verbose,
+                )?;
 
                 Ok(stats)
             }
@@ -128,73 +131,6 @@ impl Md2TomlService {
         result
     }
 
-    /// Convert directory using injected file system (for testing)
-    fn convert_directory_with_injected_fs(
-        &self,
-        src_dir: &Path,
-        dest_dir: &Path,
-    ) -> Result<ConversionStats> {
-        // This method is a bridge between Application and Infrastructure layers
-        // It uses the injected FileSystem port to perform directory conversion
-        // This is acceptable because FileSystem is a domain port, not infrastructure-specific
-
-        let mut stats = ConversionStats::new();
-
-        // Collect markdown and text files using the FileSystem port
-        let md_files = self.fs.list_files_with_extension(src_dir, "md")?;
-        let txt_files = self.fs.list_files_with_extension(src_dir, "txt")?;
-
-        let all_files: Vec<(PathBuf, &str)> = md_files
-            .iter()
-            .map(|p| (p.clone(), "md"))
-            .chain(txt_files.iter().map(|p| (p.clone(), "txt")))
-            .collect();
-
-        stats.total = all_files.len();
-
-        if all_files.is_empty() {
-            return Err(Md2TomlError::InvalidFrontmatter(format!(
-                "No supported files found in directory: {:?}",
-                src_dir
-            )));
-        }
-
-        // Process each file
-        for (src_path, ext) in all_files {
-            let relative_path = src_path.strip_prefix(src_dir).map_err(|_| {
-                Md2TomlError::PathError(format!(
-                    "Failed to get relative path: {:?} from {:?}",
-                    src_path, src_dir
-                ))
-            })?;
-            let mut dest_path = dest_dir.join(relative_path);
-
-            match ext {
-                "md" => {
-                    dest_path.set_extension("toml");
-                    match self.convert_single_file(src_path.clone(), Some(dest_path.clone())) {
-                        Ok(_) => stats.add_success(),
-                        Err(e) => stats.add_failure(src_path, &e.to_string()),
-                    }
-                }
-                "txt" => {
-                    dest_path.set_extension("txt");
-                    // Ensure parent directory exists
-                    if let Some(parent) = dest_path.parent() {
-                        self.fs.create_dir_all(parent)?;
-                    }
-                    match self.fs.copy(&src_path, &dest_path) {
-                        Ok(_) => stats.add_success(),
-                        Err(e) => stats.add_failure(src_path, &e.to_string()),
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        Ok(stats)
-    }
-
     /// Generate default output directory name
     fn default_output_dir(&self, input_dir: &Path) -> Result<PathBuf> {
         let dir_name = input_dir
@@ -209,9 +145,10 @@ impl Md2TomlService {
     }
 }
 
-/// Factory for creating service instances with Arc-based dependency injection
+/// Factory for creating service instances with dependency injection
 pub struct Md2TomlServiceBuilder {
-    fs: Option<Arc<Box<dyn FileSystem>>>,
+    fs: Option<Arc<dyn FileSystem>>,
+    directory_converter: Option<Arc<dyn DirectoryConversionUseCase>>,
     logger: Option<Arc<dyn Logger>>,
     config: Md2TomlConfig,
 }
@@ -220,13 +157,22 @@ impl Md2TomlServiceBuilder {
     pub fn new() -> Self {
         Self {
             fs: None,
+            directory_converter: None,
             logger: None,
             config: Md2TomlConfig::default(),
         }
     }
 
-    pub fn with_filesystem(mut self, fs: Arc<Box<dyn FileSystem>>) -> Self {
+    pub fn with_filesystem(mut self, fs: Arc<dyn FileSystem>) -> Self {
         self.fs = Some(fs);
+        self
+    }
+
+    pub fn with_directory_converter(
+        mut self,
+        converter: Arc<dyn DirectoryConversionUseCase>,
+    ) -> Self {
+        self.directory_converter = Some(converter);
         self
     }
 
@@ -242,9 +188,12 @@ impl Md2TomlServiceBuilder {
 
     pub fn build(self) -> Md2TomlService {
         let fs = self.fs.expect("FileSystem must be provided");
+        let directory_converter = self
+            .directory_converter
+            .expect("DirectoryConversionUseCase must be provided");
         let logger = self.logger.expect("Logger must be provided");
 
-        Md2TomlService::new(fs, logger, self.config)
+        Md2TomlService::new(fs, directory_converter, logger, self.config)
     }
 }
 
@@ -257,7 +206,7 @@ impl Default for Md2TomlServiceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::ports::{FileSystem, LogLevel, Logger};
+    use crate::domain::ports::{DirectoryConversionUseCase, FileSystem, LogLevel, Logger};
 
     struct MockFileSystem;
     impl FileSystem for MockFileSystem {
@@ -276,11 +225,11 @@ mod tests {
         fn exists(&self, _path: &Path) -> bool {
             true
         }
-        fn is_file(&self, path: &Path) -> bool {
-            path.extension().is_some()
+        fn is_file(&self, _path: &Path) -> bool {
+            true
         }
         fn is_directory(&self, _path: &Path) -> bool {
-            false
+            true
         }
         fn remove_file(&self, _path: &Path) -> Result<()> {
             Ok(())
@@ -289,13 +238,27 @@ mod tests {
             Ok(())
         }
         fn metadata(&self, _path: &Path) -> Result<crate::domain::ports::FileMetadata> {
-            let fs_metadata = std::fs::metadata(".").unwrap();
-            Ok(crate::domain::ports::FileMetadata::from_fs_metadata(
-                &fs_metadata,
-            ))
+            Ok(crate::domain::ports::FileMetadata::new(0, false, None))
         }
         fn list_files_with_extension(&self, _dir: &Path, _extension: &str) -> Result<Vec<PathBuf>> {
             Ok(Vec::new())
+        }
+    }
+
+    struct MockDirectoryConverter;
+    impl DirectoryConversionUseCase for MockDirectoryConverter {
+        fn convert_directory(
+            &self,
+            _src_dir: &Path,
+            _dest_dir: &Path,
+            _verbose: bool,
+        ) -> Result<ConversionStats> {
+            Ok(ConversionStats {
+                total: 2,
+                success: 2,
+                skipped: 0,
+                failed: Vec::new(),
+            })
         }
     }
 
@@ -314,12 +277,15 @@ mod tests {
     #[test]
     fn test_service_builder() {
         let builder = Md2TomlServiceBuilder::new()
-            .with_filesystem(Arc::new(Box::new(MockFileSystem)))
+            .with_filesystem(Arc::new(MockFileSystem))
+            .with_directory_converter(Arc::new(MockDirectoryConverter))
             .with_logger(Arc::new(MockLogger))
             .with_config(Md2TomlConfig::default());
 
         let service = builder.build();
-        // Test that Arc-based service works correctly
-        assert!(service.fs.read_to_string(Path::new("test")).is_ok());
+        assert!(service
+            .directory_converter
+            .convert_directory(Path::new("."), Path::new("test"), false)
+            .is_ok());
     }
 }

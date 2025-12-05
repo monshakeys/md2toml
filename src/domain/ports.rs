@@ -23,15 +23,6 @@ impl FileMetadata {
             modified,
         }
     }
-
-    /// Convert from std::fs::Metadata
-    pub fn from_fs_metadata(fs_metadata: &std::fs::Metadata) -> Self {
-        Self {
-            len: fs_metadata.len(),
-            is_dir: fs_metadata.is_dir(),
-            modified: fs_metadata.modified().ok(),
-        }
-    }
 }
 
 /// File system operations port

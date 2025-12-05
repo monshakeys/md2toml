@@ -2,13 +2,21 @@ use assert_fs::prelude::*;
 use predicates::prelude::*;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use md2toml::infra::convert_directory_with_default_fs;
+use md2toml::domain::ports::DirectoryConversionUseCase;
+use md2toml::infra::{FsAdapter, StandardDirectoryConversionUseCase};
 
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures")
         .join(name)
+}
+
+/// Helper to create a directory converter instance
+fn create_directory_converter() -> Arc<dyn DirectoryConversionUseCase> {
+    let fs = Arc::new(FsAdapter::new());
+    Arc::new(StandardDirectoryConversionUseCase::new(fs))
 }
 
 /// External I/O Tests (File System Operations)
@@ -22,7 +30,10 @@ async fn test_convert_directory_with_nested_structure() {
         let input_dir = fixture_path("test_project");
         let output_dir = assert_fs::TempDir::new().unwrap();
 
-        let stats = convert_directory_with_default_fs(&input_dir, output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(&input_dir, output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(stats.total, 4, "Should find 4 markdown files");
         assert_eq!(stats.success, 4, "All 4 files should convert successfully");
@@ -184,7 +195,10 @@ title: Empty
             .write_str("Plain text file")
             .unwrap();
 
-        let stats = convert_directory_with_default_fs(input_dir.path(), output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(input_dir.path(), output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(
             stats.total, 7,
@@ -231,16 +245,14 @@ async fn test_convert_empty_directory() {
 
         input_dir.child("empty_folder").create_dir_all().unwrap();
 
-        let result = convert_directory_with_default_fs(input_dir.path(), output_dir.path(), false);
+        let converter = create_directory_converter();
+        let result = converter.convert_directory(input_dir.path(), output_dir.path(), false);
 
-        assert!(
-            result.is_err(),
-            "Should fail when no .md or .txt files found"
-        );
+        assert!(result.is_err(), "Should fail when no supported files found");
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("No .md or .txt files found"));
+            .contains("No supported files found"));
     })
     .await
     .expect("Timeout: File system operations took too long (>5s)");
@@ -289,7 +301,10 @@ Content with !`command`
             )
             .unwrap();
 
-        let stats = convert_directory_with_default_fs(input_dir.path(), output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(input_dir.path(), output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(stats.total, 3);
         assert_eq!(stats.success, 2);
@@ -346,7 +361,10 @@ Deep content with $ARGUMENTS and !`deep-command`
             )
             .unwrap();
 
-        let stats = convert_directory_with_default_fs(input_dir.path(), output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(input_dir.path(), output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(stats.success, 1);
 
@@ -390,7 +408,10 @@ async fn test_path_mapping_correctness() {
         let input_dir = fixture_path("test_project");
         let output_dir = assert_fs::TempDir::new().unwrap();
 
-        convert_directory_with_default_fs(&input_dir, output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        converter
+            .convert_directory(&input_dir, output_dir.path(), false)
+            .unwrap();
 
         let expected_files = vec![
             "intro.toml",
@@ -443,7 +464,10 @@ Content
             )
             .unwrap();
 
-        let stats = convert_directory_with_default_fs(input_dir.path(), output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(input_dir.path(), output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(stats.success, 2);
 
@@ -465,7 +489,10 @@ async fn test_ignore_tilde_and_dot_prefix_files_and_directories() {
         let input_dir = fixture_path("test_tilde_ignore");
         let output_dir = assert_fs::TempDir::new().unwrap();
 
-        let stats = convert_directory_with_default_fs(&input_dir, output_dir.path(), false).unwrap();
+        let converter = create_directory_converter();
+        let stats = converter
+            .convert_directory(&input_dir, output_dir.path(), false)
+            .unwrap();
 
         assert_eq!(
             stats.total, 2,

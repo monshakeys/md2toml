@@ -19,7 +19,9 @@ pub use ports::{DirectoryConversionUseCase, DirectoryExplorer, FileSystem, LogLe
 pub use directory::{detect_input_type, map_output_base_path, should_ignore_path};
 pub use generator::generate_toml;
 pub use models::{ConversionStats as DirectoryConversionStats, InputType};
-pub use parser::{convert_markdown_to_toml, extract_content, parse_frontmatter, validate_required_fields};
+pub use parser::{
+    convert_markdown_to_toml, extract_content, parse_frontmatter, validate_required_fields,
+};
 pub use replacer::{apply_all_replacements_simple, replace_arguments, TextReplacer};
 
 // Note: collect_files_by_extension, confirm_overwrite, ensure_parent_dir remain in legacy directory.rs

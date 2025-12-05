@@ -28,11 +28,11 @@ impl Logger for SimpleLogger {
         eprintln!("ERROR: {}", message);
     }
 
-    fn debug(&self, message: &str) {
+    fn debug(&self, _message: &str) {
         // Only output debug messages in debug builds
         #[cfg(debug_assertions)]
         {
-            println!("DEBUG: {}", message);
+            println!("DEBUG: {}", _message);
         }
     }
 

@@ -12,7 +12,7 @@
 // - Direct domain model manipulation
 
 use clap::Parser;
-use md2toml::infra::SimpleLogger;
+use md2toml::infra::{SimpleLogger, StandardDirectoryConversionUseCase};
 use md2toml::{domain::Md2TomlConfig, Md2TomlServiceBuilder};
 use std::path::PathBuf;
 use std::process;
@@ -84,9 +84,10 @@ fn main() {
     // Setup logging with Arc-based dependency injection
     let logger: Arc<dyn md2toml::domain::Logger> = Arc::new(SimpleLogger);
 
-    // Create file system adapter with Arc-based sharing
-    let fs: Arc<Box<dyn md2toml::domain::FileSystem>> =
-        Arc::new(Box::new(md2toml::infra::FsAdapter::new()));
+    // Create file system adapter and directory converter
+    let fs = Arc::new(md2toml::infra::FsAdapter::new());
+    let directory_converter = Arc::new(StandardDirectoryConversionUseCase::new(fs.clone()))
+        as Arc<dyn md2toml::domain::ports::DirectoryConversionUseCase>;
 
     // Build configuration
     let mut config = Md2TomlConfig::default()
@@ -109,6 +110,7 @@ fn main() {
     // Follows Rust guidelines: Arc<T> for sharing dependencies
     let service = Md2TomlServiceBuilder::new()
         .with_filesystem(fs.clone())
+        .with_directory_converter(directory_converter)
         .with_logger(logger.clone())
         .with_config(config)
         .build();
