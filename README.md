@@ -5,10 +5,17 @@
 
 ## Features
 
-- 🎯 Migrate everything in one command - `md2toml .claude/commands/` and you're done. **50 commands converted in seconds.** 100? Same. Directory structure stays intact, files ready to use.
-- ⚡ Syntax translation on autopilot - Claude's `$ARGUMENTS` becomes Gemini's `{{args}}`. `` !`git status` `` becomes `!{git status}`. **No memorization**. **No lookup**. Just works.
-- 🛡️ Partial failures handled gracefully - 8 files broken? **Other 26 still convert successfully.** Each file is independent. You get detailed error reports for failures, working TOML for wins.
-- ✨ Smart filtering by default - Automatically skips draft files (`~draft.md`), backup folders (`~old/`), system junk (`.DS_Store`, `.git/`). **No manual cleanup required.**
+- 🎯 **Batch Directory Conversion**: Convert entire command directories in a single operation.
+  > *"Dauthen stared at her 200+ Claude slash commands, knowing manual conversion would take weeks. With `md2toml .claude/commands/`, she watched 200 files transform into Gemini format in 30 seconds, leaving her evening free for her art class."*
+
+- ⚡ **Automatic Syntax Translation**: Intelligent conversion of Claude-specific syntax to Gemini CLI format.
+  > *"Dauthen used to keep a cheat sheet beside her monitor, constantly looking up `$ARGUMENTS` to `{{args}}` mappings until 3 AM. With md2toml's autopilot translation engine, she now migrates entire projects without memorizing a single syntax rule."*
+
+- 🛡️ **Resilient Partial Conversion**: Continue processing even when some files fail validation.
+  > *"When 8 of Dauthen's 34 command files had corrupted frontmatter, she braced for a total failure. Instead, md2toml converted the remaining 26 successfully, showing her exactly which files needed fixing while delivering working TOML for the rest."*
+
+- ✨ **Smart Auto-Filtering**: Automatically skip drafts, backups, and system files.
+  > *"What Dauthen loved most was how md2toml's filtering became her personal file management system. She prefixed experimental commands with `~experimental-`, marked half-finished drafts with `~draft-`, and let the tool automatically skip them during conversion while she focused on the commands she was actually ready to use. Her directory stayed organized without manual cleanup—just prefix and convert."*
 
 
 ## Installation
