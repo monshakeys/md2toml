@@ -81,9 +81,13 @@ mod tests {
 
     #[test]
     fn test_load_from_env_default() {
-        // Clear any existing environment variables
+        // Clear all environment variables to ensure clean test
         std::env::remove_var("MD2TOML_VERBOSE");
         std::env::remove_var("MD2TOML_SKIP_HIDDEN");
+        std::env::remove_var("MD2TOML_OVERWRITE");
+        std::env::remove_var("MD2TOML_PARALLEL");
+        std::env::remove_var("MD2TOML_WORKER_THREADS");
+        std::env::remove_var("MD2TOML_MAX_FILE_SIZE");
 
         let loader = EnvConfigLoader::new();
         let config = loader.load_from_env().unwrap();
@@ -92,10 +96,21 @@ mod tests {
         assert!(config.skip_hidden);
         assert!(!config.overwrite);
         assert!(!config.parallel);
+        assert_eq!(config.worker_threads, None);
+        assert_eq!(config.max_file_size, None);
     }
 
     #[test]
     fn test_load_from_env_verbose() {
+        // Clear all env vars first
+        std::env::remove_var("MD2TOML_VERBOSE");
+        std::env::remove_var("MD2TOML_SKIP_HIDDEN");
+        std::env::remove_var("MD2TOML_OVERWRITE");
+        std::env::remove_var("MD2TOML_PARALLEL");
+        std::env::remove_var("MD2TOML_WORKER_THREADS");
+        std::env::remove_var("MD2TOML_MAX_FILE_SIZE");
+
+        // Set the one we want to test
         std::env::set_var("MD2TOML_VERBOSE", "true");
 
         let loader = EnvConfigLoader::new();
@@ -109,6 +124,15 @@ mod tests {
 
     #[test]
     fn test_load_from_env_max_file_size() {
+        // Clear all env vars first
+        std::env::remove_var("MD2TOML_VERBOSE");
+        std::env::remove_var("MD2TOML_SKIP_HIDDEN");
+        std::env::remove_var("MD2TOML_OVERWRITE");
+        std::env::remove_var("MD2TOML_PARALLEL");
+        std::env::remove_var("MD2TOML_WORKER_THREADS");
+        std::env::remove_var("MD2TOML_MAX_FILE_SIZE");
+
+        // Set the one we want to test
         std::env::set_var("MD2TOML_MAX_FILE_SIZE", "1024");
 
         let loader = EnvConfigLoader::new();
@@ -122,6 +146,15 @@ mod tests {
 
     #[test]
     fn test_load_from_env_parallel() {
+        // Clear all env vars first
+        std::env::remove_var("MD2TOML_VERBOSE");
+        std::env::remove_var("MD2TOML_SKIP_HIDDEN");
+        std::env::remove_var("MD2TOML_OVERWRITE");
+        std::env::remove_var("MD2TOML_PARALLEL");
+        std::env::remove_var("MD2TOML_WORKER_THREADS");
+        std::env::remove_var("MD2TOML_MAX_FILE_SIZE");
+
+        // Set the ones we want to test
         std::env::set_var("MD2TOML_PARALLEL", "true");
         std::env::set_var("MD2TOML_WORKER_THREADS", "4");
 

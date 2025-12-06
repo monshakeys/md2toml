@@ -93,14 +93,39 @@ md2toml commands/ -o output/
 
 ```
 src/
-├── main.rs         # CLI interface
-├── lib.rs          # library entry point
-├── parser.rs       # yaml frontmatter parsing + validation
-├── replacer.rs     # syntax conversion
-├── generator.rs    # toml output generation
-├── directory.rs    # batch processing + smart filtering
-└── error.rs        # error handling
+├── main.rs                    # Presentation Layer - CLI interface
+├── lib.rs                     # System Root - module exports
+├── application.rs             # Application Layer - use case orchestration
+├── domain/                    # Domain Layer - pure business logic
+│   ├── config.rs             # Configuration models
+│   ├── directory.rs          # Directory processing & filtering
+│   ├── errors.rs             # Domain error definitions
+│   ├── generator.rs          # TOML output generation
+│   ├── models.rs             # Domain entities & value objects
+│   ├── parser.rs             # Markdown parsing & frontmatter
+│   ├── ports.rs              # Port definitions (traits)
+│   └── replacer.rs           # Content replacement logic
+├── infra/                     # Infrastructure Layer - I/O implementations
+│   ├── fs_adapter.rs         # File system operations
+│   ├── logger.rs             # Logging implementation
+│   └── regex_service.rs      # Regex service
+└── application/               # Application use cases
+    ├── config_loader.rs      # Configuration loading
+    └── directory_conversion_use_case.rs
 ```
+
+> **Architecture Philosophy**
+>
+> This project implements a **Hexagonal Architecture** (Ports & Adapters) pattern fused with **Domain-Driven Design (DDD)** principles. The architecture emphasizes **clean separation of concerns** through four distinct layers:
+>
+> - **Presentation Layer** handles user interaction and CLI concerns
+> - **Application Layer** orchestrates business workflows and use cases
+> - **Domain Layer** contains pure business logic, entities, and business rules
+> - **Infrastructure Layer** implements technical concerns and external dependencies
+>
+> **Dependency Direction Flow**: `Presentation → Application → Domain ← Infrastructure`
+>
+> This design ensures **high testability**, **loose coupling**, and **business logic isolation** from technical implementation details. All domain logic can be tested without I/O dependencies.
 
 
 ## Output Examples

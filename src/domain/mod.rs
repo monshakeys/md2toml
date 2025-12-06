@@ -23,6 +23,3 @@ pub use parser::{
     convert_markdown_to_toml, extract_content, parse_frontmatter, validate_required_fields,
 };
 pub use replacer::{apply_all_replacements_simple, replace_arguments, TextReplacer};
-
-// Note: collect_files_by_extension, confirm_overwrite, ensure_parent_dir remain in legacy directory.rs
-// as they involve I/O operations that shouldn't be in pure domain logic

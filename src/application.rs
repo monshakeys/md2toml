@@ -202,7 +202,12 @@ impl Md2TomlServiceBuilder {
 
         // Configuration validation is handled by Md2TomlConfig::validate()
         // which is called when the configuration is created/modified
-        Ok(Md2TomlService::new(fs, directory_converter, logger, self.config))
+        Ok(Md2TomlService::new(
+            fs,
+            directory_converter,
+            logger,
+            self.config,
+        ))
     }
 }
 

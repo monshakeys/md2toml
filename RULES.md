@@ -287,38 +287,56 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
 
 
 ## Test Coverage
-### Unit Tests (65 tests)
+### Test Coverage Summary
+- ✅ **73 tests passing** (100% success rate with nextest)
+- ✅ **55 unit tests** across 3 layers (Domain/Application/Infrastructure)
+- ✅ **18 integration tests** for end-to-end validation
 
-- Parser: 12 tests (metadata + content + validation)
-- Replacer: 14 tests ($ARGUMENTS + backticks)
-- Generator: 9 tests (TOML output)
-- Error: 5 tests (validation failures)
-- Directory: 16 tests (path detection + file collection + prefix filtering)
-  - 8 prefix filtering tests:
-    - ✅ Ignore files starting with `~`
-    - ✅ Ignore files starting with `.`
-    - ✅ Do not ignore normal files (including filenames with symbols in the middle)
-    - ✅ Ignore directories starting with `~`
-    - ✅ Ignore directories starting with `.`
-    - ✅ Do not ignore normal directories
-    - ✅ `collect_files_by_extension` ignores tilde and dot files
-    - ✅ `collect_files_by_extension` ignores tilde and dot directories
+### Unit Tests (55 tests total)
+
+**By Layer:**
+- **Domain Layer: 44 tests**
+  - directory.rs: 14 tests (path detection + filtering + mapping)
+  - parser.rs: 14 tests (metadata parsing + content extraction + validation)
+  - generator.rs: 9 tests (TOML output generation)
+  - replacer.rs: 5 tests ($ARGUMENTS + backticks replacement)
+  - errors.rs: 2 tests (domain error handling)
+
+- **Application Layer: 5 tests**
+  - config_loader.rs: 5 tests (environment configuration loading)
+
+- **Infrastructure Layer: 6 tests**
+  - fs_adapter.rs: 2 tests (file system I/O operations)
+  - regex_service.rs: 4 tests (pattern matching and replacement)
+
+**Verification:** 44 + 5 + 6 = 55 unit tests ✅
 
 ### Integration Tests (18 tests)
 
-- Directory conversion tests (8 tests):
-  - ✅ Nested directory structure conversion
-  - ✅ Validation failure handling
-  - ✅ Empty directory error handling
-  - ✅ Partial success scenarios
-  - ✅ Deep nesting support
-  - ✅ Path mapping correctness
-  - ✅ Special character filenames
-  - ✅ Prefix filtering (~ and .)
-- File conversion tests (10 tests):
-  - 6 basic conversion tests (without required field validation)
-  - 4 validation tests:
-    - ✅ Pass validation (has title + description)
-    - ❌ Missing description
-    - ❌ Missing title
-    - ❌ No metadata
+**Directory Conversion Tests (8 tests):**
+- **Nested directory structure conversion**: Verifies recursive directory traversal and maintains folder hierarchy in output
+- **Deep nesting support**: Tests conversion works correctly with deeply nested folder structures (3+ levels)
+- **Validation failure handling**: Ensures invalid files don't stop conversion of other valid files in the same directory
+- **Partial success scenarios**: Confirms conversion continues when some files fail validation while others succeed
+- **Empty directory error handling**: Validates proper error reporting when no valid files are found
+- **Path mapping correctness**: Verifies output file paths correctly mirror input directory structure
+- **Special character filenames**: Tests conversion with files containing spaces, unicode, and special symbols
+- **Prefix filtering (~ and .)**: Confirms automatic skipping of tilde and dot-prefixed files/directories
+
+**File Conversion Tests (10 tests):**
+
+**Basic Conversion Flow (6 tests):**
+- Simple markdown conversion with minimal metadata
+- Complex metadata with nested structures
+- Multi-line prompt content preservation
+- Special characters and escaping in content
+- Empty metadata handling
+- Long content handling
+
+**Validation Scenarios (4 tests):**
+- ✅ **Pass**: Valid file with title + description fields
+- ❌ **Missing description**: File lacks required description field
+- ❌ **Missing title**: File lacks required title field
+- ❌ **No metadata**: File has no frontmatter at all
+
+**Total: 8 + 6 + 4 = 18 integration tests**

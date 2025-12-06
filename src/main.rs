@@ -13,8 +13,8 @@
 
 use clap::Parser;
 use md2toml::application::{EnvConfigLoader, StandardDirectoryConversionUseCase};
-use md2toml::infra::SimpleLogger;
 use md2toml::domain::ports::ConfigLoader;
+use md2toml::infra::SimpleLogger;
 use md2toml::Md2TomlServiceBuilder;
 use std::path::PathBuf;
 use std::process;
