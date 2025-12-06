@@ -288,28 +288,28 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
 
 ## Test Coverage
 ### Test Coverage Summary
-- ✅ **73 tests passing** (100% success rate with nextest)
-- ✅ **55 unit tests** across 3 layers (Domain/Application/Infrastructure)
+- ✅ **69 tests passing** (100% success rate with nextest)
+- ✅ **51 unit tests** across 3 layers (Domain/Application/Infrastructure)
 - ✅ **18 integration tests** for end-to-end validation
 
-### Unit Tests (55 tests total)
+### Unit Tests (51 tests total)
 
 **By Layer:**
 - **Domain Layer: 44 tests**
-  - directory.rs: 14 tests (path detection + filtering + mapping)
-  - parser.rs: 14 tests (metadata parsing + content extraction + validation)
+  - directory.rs: 8 tests (path detection + filtering + mapping)
+  - parser.rs: 22 tests (metadata parsing + content extraction + validation)
   - generator.rs: 9 tests (TOML output generation)
   - replacer.rs: 5 tests ($ARGUMENTS + backticks replacement)
-  - errors.rs: 2 tests (domain error handling)
+  - errors.rs: 0 tests (domain error handling)
 
-- **Application Layer: 5 tests**
-  - config_loader.rs: 5 tests (environment configuration loading)
+- **Application Layer: 1 test**
+  - application.rs: 1 test (service builder)
 
 - **Infrastructure Layer: 6 tests**
   - fs_adapter.rs: 2 tests (file system I/O operations)
   - regex_service.rs: 4 tests (pattern matching and replacement)
 
-**Verification:** 44 + 5 + 6 = 55 unit tests ✅
+**Verification:** 44 + 1 + 6 = 51 unit tests ✅
 
 ### Integration Tests (18 tests)
 

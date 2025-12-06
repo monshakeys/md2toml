@@ -1,8 +1,6 @@
-// Application Layer - Directory Conversion Use Case Implementation
-//
-// This use case orchestrates the directory conversion business workflow.
-// According to rust.guidelines.md, this belongs in Application layer,
-// not Infrastructure, as it coordinates business processes.
+//! Application Layer - Directory Conversion Use Case Implementation
+//!
+//! This use case orchestrates the directory conversion business workflow.
 
 use crate::domain::errors::Result;
 use crate::domain::models::ConversionStats;
@@ -11,13 +9,13 @@ use std::path::{Path, PathBuf};
 
 /// Standard directory conversion use case implementation
 ///
-/// This is an Application layer component that orchestrates the business workflow:
+/// This orchestrates the business workflow:
 /// - Scans directory for files
 /// - Determines processing strategy for each file
 /// - Coordinates file processing
 /// - Tracks conversion statistics
 ///
-/// It delegates I/O operations to the FileSystem port (Infrastructure).
+/// Delegates I/O operations to the FileSystem port.
 pub struct StandardDirectoryConversionUseCase {
     fs: std::sync::Arc<dyn crate::domain::ports::FileSystem>,
 }
@@ -55,7 +53,6 @@ impl DirectoryConversionUseCase for StandardDirectoryConversionUseCase {
             ));
         }
 
-        // Process each file - this is the business workflow orchestration
         for (src_path, ext) in all_files {
             let relative_path = src_path.strip_prefix(src_dir).map_err(|_| {
                 crate::domain::errors::Md2TomlError::PathError(format!(
@@ -68,7 +65,6 @@ impl DirectoryConversionUseCase for StandardDirectoryConversionUseCase {
             match ext {
                 "md" => {
                     dest_path.set_extension("toml");
-                    // Coordinate markdown file processing workflow
                     match self.process_markdown_file(&src_path, &dest_path) {
                         Ok(_) => stats.add_success(),
                         Err(e) => stats.add_failure(src_path, &e.to_string()),
@@ -76,7 +72,6 @@ impl DirectoryConversionUseCase for StandardDirectoryConversionUseCase {
                 }
                 "txt" => {
                     dest_path.set_extension("txt");
-                    // Coordinate text file copying workflow
                     if let Some(parent) = dest_path.parent() {
                         self.fs.create_dir_all(parent)?;
                     }
@@ -95,17 +90,13 @@ impl DirectoryConversionUseCase for StandardDirectoryConversionUseCase {
 
 impl StandardDirectoryConversionUseCase {
     /// Process a single markdown file
-    ///
-    /// This demonstrates Application layer coordinating between:
-    /// - Domain logic (convert_markdown_to_toml)
-    /// - Infrastructure ports (FileSystem for I/O)
     fn process_markdown_file(&self, src: &Path, dest: &Path) -> Result<()> {
         use crate::domain::convert_markdown_to_toml;
 
         // I/O: Read input file via FileSystem port
         let input_content = self.fs.read_to_string(src)?;
 
-        // Business logic: Use pure domain function (no I/O)
+        // Business logic: Use pure domain function
         let toml_output = convert_markdown_to_toml(&input_content)?;
 
         // I/O: Ensure parent directory and write output via FileSystem port

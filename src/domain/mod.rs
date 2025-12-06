@@ -1,5 +1,6 @@
-// Domain Layer - Core Business Logic
-// Pure business rules, free from infrastructure concerns
+//! Domain Layer - Core Business Logic
+//!
+//! Pure business rules, free from infrastructure concerns.
 
 pub mod config;
 pub mod directory;
@@ -13,7 +14,7 @@ pub mod replacer;
 pub use config::Md2TomlConfig;
 pub use errors::{Md2TomlError, Result};
 pub use models::{ConversionStats, FileType, ParsedMarkdown, ProcessingStrategy};
-pub use ports::{DirectoryConversionUseCase, DirectoryExplorer, FileSystem, LogLevel, Logger};
+pub use ports::{DirectoryConversionUseCase, FileSystem, LogLevel, Logger};
 
 // Re-export core business modules
 pub use directory::{detect_input_type, map_output_base_path, should_ignore_path};

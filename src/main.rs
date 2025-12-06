@@ -1,19 +1,12 @@
-// Presentation Layer - CLI Entry Point
-//
-// Responsibilities:
-// - Parse command-line arguments
-// - Render user interface (help, messages, errors)
-// - Wire up dependencies (dependency injection)
-// - Delegate to application layer
-//
-// Strictly forbids:
-// - Business logic
-// - File I/O operations
-// - Direct domain model manipulation
+//! CLI entry point for md2toml conversion tool
+//!
+//! This is the presentation layer that orchestrates user interaction,
+//! delegates to the application layer, and handles all output formatting.
+//!
 
 use clap::Parser;
-use md2toml::application::{EnvConfigLoader, StandardDirectoryConversionUseCase};
-use md2toml::domain::ports::ConfigLoader;
+use md2toml::application::StandardDirectoryConversionUseCase;
+use md2toml::domain::Md2TomlConfig;
 use md2toml::infra::SimpleLogger;
 use md2toml::Md2TomlServiceBuilder;
 use std::path::PathBuf;
@@ -80,29 +73,17 @@ struct Args {
 }
 
 fn main() {
-    // Parse command-line arguments
     let args = Args::parse();
 
-    // Setup logging with Arc-based dependency injection
+    // Arc-based dependency injection for shared dependencies
     let logger: Arc<dyn md2toml::domain::Logger> = Arc::new(SimpleLogger);
 
-    // Create file system adapter and directory converter
     let fs = Arc::new(md2toml::infra::FsAdapter::new());
     let directory_converter = Arc::new(StandardDirectoryConversionUseCase::new(fs.clone()))
         as Arc<dyn md2toml::domain::ports::DirectoryConversionUseCase>;
 
-    // Load configuration using ConfigLoader Port
-    // This allows for different configuration sources (env, files, etc.)
-    let config_loader = EnvConfigLoader::new();
-    let mut config = match config_loader.load_from_env() {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            eprintln!("Failed to load configuration from environment: {}", e);
-            process::exit(1);
-        }
-    };
+    let mut config = Md2TomlConfig::default();
 
-    // Apply command-line argument overrides
     // CLI args take precedence over environment variables
     config = config
         .verbose()
@@ -113,7 +94,6 @@ fn main() {
         config = config.parallel(args.workers);
     }
 
-    // Build service with Arc-based dependency injection
     // Follows Rust guidelines: Arc<T> for sharing dependencies
     // Configuration validation happens in Application layer
     let service = match Md2TomlServiceBuilder::new()
@@ -131,10 +111,8 @@ fn main() {
         }
     };
 
-    // Execute conversion
     match service.convert(args.input, args.output) {
         Ok(stats) => {
-            // Presentation layer handles all output formatting
             // Application layer returns pure data structures (ConversionStats)
             // This is the correct location for UI output logic
             println!("\n✓ Conversion completed successfully!");
@@ -151,7 +129,6 @@ fn main() {
             }
         }
         Err(e) => {
-            // Handle and display errors appropriately
             // Error formatting belongs in Presentation layer
             let exit_code = match e {
                 md2toml::Md2TomlError::InvalidFrontmatter(_) => 2,

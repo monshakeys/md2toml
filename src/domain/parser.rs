@@ -1,14 +1,13 @@
-// Domain Layer - Markdown Parsing Logic
-//
-// Pure business logic for parsing markdown frontmatter and content.
-// No infrastructure dependencies, no I/O operations.
+//! Domain Layer - Markdown Parsing Logic
+//!
+//! Pure business logic for parsing markdown frontmatter and content.
 
 use crate::domain::errors::{Md2TomlError, Result};
 use std::collections::BTreeMap;
 
 /// Converts a YAML Value to a single-line flow-style string
 ///
-/// This function formats YAML sequences and mappings in a compact, human-readable format
+/// Formats YAML sequences and mappings in a compact, human-readable format
 /// without JSON-style escaping (e.g., `[rust, cli]` instead of `["rust","cli"]`).
 fn value_to_flow_style(value: &serde_yaml::Value) -> String {
     match value {
@@ -187,16 +186,12 @@ pub fn validate_required_fields(metadata: &BTreeMap<String, String>) -> Result<(
 /// assert!(toml.contains("Content with {{args}}"));
 /// ```
 pub fn convert_markdown_to_toml(markdown: &str) -> Result<String> {
-    // Parse frontmatter and content
     let parsed = parse_markdown(markdown)?;
 
-    // Validate required fields
     validate_required_fields(&parsed.metadata)?;
 
-    // Apply replacements to content
     let processed_content = crate::domain::replacer::apply_all_replacements_simple(&parsed.content);
 
-    // Generate TOML output
     crate::domain::generator::generate_toml(&parsed.metadata, &processed_content)
 }
 
@@ -465,7 +460,6 @@ Content"#;
 
         assert_eq!(result.get("title").unwrap(), "Test");
         assert_eq!(result.get("description").unwrap(), "Test Description");
-        // Should be formatted as flow-style: [rust, cli, converter]
         assert_eq!(result.get("tags").unwrap(), "[rust, cli, converter]");
     }
 
@@ -484,7 +478,6 @@ Content"#;
 
         assert_eq!(result.get("title").unwrap(), "Test");
         assert_eq!(result.get("description").unwrap(), "Test Description");
-        // Should be formatted as flow-style: {verbose: true, timeout: 30}
         let config = result.get("config").unwrap();
         assert!(config.contains("verbose: true"));
         assert!(config.contains("timeout: 30"));
@@ -505,7 +498,6 @@ Content"#;
 
         let result = parse_frontmatter(input).unwrap();
 
-        // Should be formatted as flow-style: [[a, b], [c, d]]
         assert_eq!(result.get("matrix").unwrap(), "[[a, b], [c, d]]");
     }
 
@@ -523,7 +515,6 @@ Content"#;
 
         let result = parse_frontmatter(input).unwrap();
 
-        // Special characters should be quoted
         let items = result.get("items").unwrap();
         assert!(items.contains("\"hello, world\""));
         assert!(items.contains("\"test: 123\""));

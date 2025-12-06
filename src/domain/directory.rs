@@ -1,7 +1,6 @@
-// Domain Layer - Directory Processing Logic
-//
-// Pure business logic for directory and file operations.
-// No infrastructure dependencies, no I/O operations.
+//! Domain Layer - Directory Processing Logic
+//!
+//! Pure business logic for directory and file operations.
 
 use std::path::{Path, PathBuf};
 
@@ -34,9 +33,6 @@ pub fn should_ignore_path(path: &Path) -> bool {
 /// This is a pure function that doesn't perform I/O checks.
 /// Assumes path exists and performs validation based on extension only.
 pub fn detect_input_type(path: &Path) -> InputType {
-    // Pure function - no I/O operations
-    // Only check extension, don't verify file existence or type
-
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         if ext == "md" || ext == "txt" {
             return InputType::File(path.to_path_buf());
@@ -48,8 +44,6 @@ pub fn detect_input_type(path: &Path) -> InputType {
         }
     }
 
-    // Check if it's a directory by checking if extension is None
-    // This is a heuristic - actual I/O check should happen in Infrastructure layer
     InputType::Directory(path.to_path_buf())
 }
 

@@ -1,10 +1,6 @@
-// Domain Layer - Text Replacement Logic
-//
-// Pure business logic for text transformations.
-// No external dependencies, no infrastructure concerns.
-//
-// Uses RegexPort abstraction for pattern matching.
-// Regex implementation is in Infrastructure layer.
+//! Domain Layer - Text Replacement Logic
+//!
+//! Pure business logic for text transformations.
 
 use crate::domain::ports::RegexPort;
 
@@ -52,7 +48,6 @@ mod tests {
     struct MockRegexPort;
     impl RegexPort for MockRegexPort {
         fn replace_backtick_patterns(&self, content: &str) -> String {
-            // Simple mock implementation
             content.replace("!`", "!{").replace("`", "}")
         }
     }

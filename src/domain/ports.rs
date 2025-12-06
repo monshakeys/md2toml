@@ -1,12 +1,11 @@
 use crate::domain::errors::Result;
-use crate::domain::models::{ConversionResult, ConversionStats};
+use crate::domain::models::ConversionStats;
 use std::path::Path;
 use std::path::PathBuf;
 
 /// Domain-level file metadata abstraction
 ///
 /// Abstracts file system metadata to prevent infrastructure leakage.
-/// This structure provides only the information needed by domain logic.
 #[derive(Debug, Clone)]
 pub struct FileMetadata {
     pub len: u64,
@@ -27,7 +26,7 @@ impl FileMetadata {
 
 /// File system operations port
 ///
-/// This trait abstracts all file system operations to enable:
+/// Abstracts all file system operations to enable:
 /// - Dependency inversion (test with mock implementations)
 /// - Different storage backends (local FS, cloud storage, etc.)
 /// - Better testability
@@ -92,26 +91,6 @@ pub trait Logger: Send + Sync {
     fn is_debug_enabled(&self) -> bool;
 }
 
-/// Log message structure
-#[derive(Debug, Clone)]
-pub struct LogMessage {
-    pub level: LogLevel,
-    pub message: String,
-    pub context: Option<String>,
-    pub timestamp: std::time::Instant,
-}
-
-impl LogMessage {
-    pub fn new(level: LogLevel, message: String, context: Option<String>) -> Self {
-        Self {
-            level,
-            message,
-            context,
-            timestamp: std::time::Instant::now(),
-        }
-    }
-}
-
 /// Log level enumeration
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LogLevel {
@@ -130,20 +109,6 @@ impl std::fmt::Display for LogLevel {
             LogLevel::Error => write!(f, "ERROR"),
         }
     }
-}
-
-/// Repository port for conversion statistics
-///
-/// Enables persistence and retrieval of conversion results
-pub trait ConversionRepository: Send + Sync {
-    /// Save conversion result
-    fn save_result(&self, result: &ConversionResult) -> Result<()>;
-
-    /// Get all results for a batch
-    fn get_batch_results(&self, batch_id: &str) -> Result<Vec<ConversionResult>>;
-
-    /// Clear all results
-    fn clear(&self) -> Result<()>;
 }
 
 /// Configuration loader port
@@ -169,7 +134,6 @@ pub trait RegexPort: Send + Sync {
 /// Directory conversion use case port
 ///
 /// Abstracts directory conversion operations to keep Application layer pure.
-/// This is a use case that Infrastructure implements.
 pub trait DirectoryConversionUseCase: Send + Sync {
     /// Convert all files in a directory structure
     fn convert_directory(
@@ -178,15 +142,4 @@ pub trait DirectoryConversionUseCase: Send + Sync {
         dest_dir: &Path,
         verbose: bool,
     ) -> Result<ConversionStats>;
-}
-
-/// Directory explorer port
-///
-/// Abstracts directory traversal to enable:
-/// - Dependency inversion (test with mock implementations)
-/// - Different directory sources (e.g., virtual file systems)
-pub trait DirectoryExplorer: Send + Sync {
-    /// Recursively find all markdown files in a directory.
-    /// It should ignore dotfiles/dotfolders and follow .gitignore rules by default.
-    fn discover_markdown_files(&self, root: &Path) -> Result<Vec<PathBuf>>;
 }

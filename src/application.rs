@@ -1,13 +1,10 @@
-// Application Layer - Use Case Orchestration
-//
-// Coordinates domain logic with infrastructure ports (traits)
-// Implements business workflows and transaction control.
+//! Application Layer - Use Case Orchestration
+//!
+//! Coordinates domain logic with infrastructure ports and implements business workflows.
 
-pub mod config_loader;
 pub mod directory_conversion_use_case;
 
 // Re-export public types for convenience
-pub use config_loader::EnvConfigLoader;
 pub use directory_conversion_use_case::StandardDirectoryConversionUseCase;
 
 use crate::domain::errors::{Md2TomlError, Result};
@@ -50,7 +47,6 @@ impl Md2TomlService {
     fn convert_single_file(&self, input: PathBuf, output: Option<PathBuf>) -> Result<()> {
         self.logger.info("Starting file conversion");
 
-        // Parse metadata and content using FileSystem port
         let content = self.fs.read_to_string(&input)?;
         self.logger
             .debug(&format!("Read file: {:?}", input.display()));
@@ -60,13 +56,10 @@ impl Md2TomlService {
 
         let content = extract_content(&content)?;
 
-        // Apply replacements
         let processed_content = crate::domain::apply_all_replacements_simple(&content);
 
-        // Generate TOML
         let toml_output = generate_toml(&metadata, &processed_content)?;
 
-        // Determine output path
         let output_path = output.unwrap_or_else(|| {
             let mut path = input.clone();
             path.set_extension("toml");
@@ -76,7 +69,6 @@ impl Md2TomlService {
         self.logger
             .debug(&format!("Writing to: {:?}", output_path.display()));
 
-        // Write output file via FileSystem port
         self.fs.write(&output_path, &toml_output)?;
 
         self.logger.info("File conversion completed");

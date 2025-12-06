@@ -1,0 +1,282 @@
+name: Release
+
+on:
+  push:
+    # 只有當推送標籤以 "v" 開頭時才觸發 (例如 v1.0.0)
+    tags:
+      - 'v*'
+  workflow_dispatch: # 允許手動觸發
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ========== 主要編譯任務 ==========
+  build:
+    name: Build release binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple Silicon Mac (你當前的環境)
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            arch: arm64
+            binary_name: md2toml
+            asset_name: md2toml-aarch64-apple-darwin.tar.gz
+
+          # Intel Mac
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            arch: x86_64
+            binary_name: md2toml
+            asset_name: md2toml-x86_64-apple-darwin.tar.gz
+
+          # Linux x64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            arch: x86_64
+            binary_name: md2toml
+            asset_name: md2toml-x86_64-unknown-linux-gnu.tar.gz
+
+          # Windows x64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            arch: x86_64
+            binary_name: md2toml.exe
+            asset_name: md2toml-x86_64-pc-windows-msvc.zip
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          toolchain: stable
+
+      - name: Install cross (for Linux/Windows compilation on macOS)
+        if: matrix.os == 'macos-latest'
+        run: cargo install cross --locked
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgcc-10-dev
+
+      - name: Build binary
+        run: |
+          # 設定環境變量
+          if [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            # Apple Silicon - 直接編譯
+            cargo build --release --target ${{ matrix.target }}
+          elif [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            # Intel Mac - 使用 cross 避免 macOS 環境限制
+            cross build --release --target ${{ matrix.target }}
+          elif [[ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+            # Linux - 使用 cross
+            cross build --release --target ${{ matrix.target }}
+          elif [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
+            # Windows - 使用 cross
+            cross build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            # Windows: 複製 .exe 檔案
+            cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} dist/
+            cd dist
+            7z a ../${{ matrix.asset_name }} ${{ matrix.binary_name }}
+            cd ..
+          else
+            # macOS/Linux: 創建 tar.gz
+            cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} dist/
+            cd dist
+            tar czf ../${{ matrix.asset_name }} ${{ matrix.binary_name }}
+            cd ..
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+          retention-days: 7
+
+  # ========== 創建 Universal Binary (Intel + Apple Silicon) ==========
+  universal:
+    name: Create Universal Binary (Intel + Apple Silicon)
+    runs-on: macos-latest
+    needs: build
+    if: contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Intel Mac binary
+        uses: actions/download-artifact@v4
+        with:
+          name: md2toml-x86_64-apple-darwin.tar.gz
+          path: intel.tar.gz
+
+      - name: Download Apple Silicon binary
+        uses: actions/download-artifact@v4
+        with:
+          name: md2toml-aarch64-apple-darwin.tar.gz
+          path: arm64.tar.gz
+
+      - name: Extract binaries
+        run: |
+          tar -xzf intel.tar.gz
+          tar -xzf arm64.tar.gz
+          mkdir -p dist
+
+      - name: Create Universal Binary
+        run: |
+          # 使用 lipo 合併兩種架構
+          lipo -create md2toml md2toml -output dist/md2toml-universal
+          chmod +x dist/md2toml-universal
+
+          # 驗證
+          lipo -info dist/md2toml-universal
+
+          # 打包
+          cd dist
+          tar czf ../md2toml-universal-apple-darwin.tar.gz md2toml-universal
+          cd ..
+
+      - name: Upload Universal Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: md2toml-universal-apple-darwin.tar.gz
+          path: md2toml-universal-apple-darwin.tar.gz
+          retention-days: 7
+
+  # ========== 創建 GitHub Release ==========
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, universal]
+    if: contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: find artifacts -type f
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*/*
+          body: |
+            ## Changes in this release
+
+            ### Installation
+            - **Universal Binary (Recommended for Mac)**: Download `md2toml-universal-apple-darwin.tar.gz` - works on both Intel and Apple Silicon Macs
+            - **Intel Mac**: Download `md2toml-x86_64-apple-darwin.tar.gz`
+            - **Apple Silicon Mac**: Download `md2toml-aarch64-apple-darwin.tar.gz`
+            - **Linux**: Download `md2toml-x86_64-unknown-linux-gnu.tar.gz`
+            - **Windows**: Download `md2toml-x86_64-pc-windows-msvc.zip`
+
+            ### Quick Install (Mac)
+            ```bash
+            # Extract and install
+            tar -xzf md2toml-universal-apple-darwin.tar.gz
+            sudo mv md2toml-universal /usr/local/bin/md2toml
+            chmod +x /usr/local/bin/md2toml
+            ```
+
+            ### Quick Install (Linux)
+            ```bash
+            # Extract and install
+            tar -xzf md2toml-x86_64-unknown-linux-gnu.tar.gz
+            sudo mv md2toml /usr/local/bin/md2toml
+            chmod +x /usr/local/bin/md2toml
+            ```
+
+            ### Quick Install (Windows)
+            ```bash
+            # Extract the zip file
+            # Add md2toml.exe to your PATH
+            ```
+
+            ## Supported Platforms
+            - ✅ Apple Silicon Mac (M1/M2/M3)
+            - ✅ Intel Mac
+            - ✅ Linux x64
+            - ✅ Windows x64
+
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ========== 發布到 Homebrew ==========
+  homebrew:
+    name: Publish to Homebrew
+    runs-on: ubuntu-latest
+    needs: release
+    if: contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download Universal Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: md2toml-universal-apple-darwin.tar.gz
+          path: md2toml-universal-apple-darwin.tar.gz
+
+      - name: Extract and prepare Homebrew formula
+        run: |
+          tar -xzf md2toml-universal-apple-darwin.tar.gz
+          mkdir -p homebrew-mac
+
+          # 移動檔案到 homebrew 目錄
+          mv md2toml-universal homebrew-mac/md2toml
+
+          # 計算 SHA256
+          cd homebrew-mac
+          sha256sum md2toml > md2toml.sha256
+          cd ..
+
+      - name: Create Homebrew Formula Pull Request
+        uses: michaelfitzman/homebrew-tap-pr-action@v1
+        with:
+          tap: monshakeys/tap
+          formula: md2toml
+          version: ${{ github.ref_name }}
+          artifact_path: homebrew-mac/md2toml
+          sha256_path: homebrew-mac/md2toml.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

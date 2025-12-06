@@ -1,8 +1,6 @@
-// Infrastructure Layer - Logger Implementation
-//
-// Simple logger that outputs to stdout/stderr.
-// This follows the Rust guidelines: Infrastructure must use Logger Port,
-// never directly use println! in infrastructure code.
+//! Infrastructure Layer - Logger Implementation
+//!
+//! Simple logger that outputs to stdout/stderr.
 
 use crate::domain::ports::{LogLevel, Logger};
 

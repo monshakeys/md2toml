@@ -6,7 +6,7 @@
 ## Features
 
 - 🎯 **Batch Directory Conversion**: Convert entire command directories in a single operation.
-  > *"Dauthen stared at her 200+ Claude slash commands, knowing manual conversion would take weeks. With `md2toml .claude/commands/`, she watched 200 files transform into Gemini format in 30 seconds, leaving her evening free for her art class."*
+  > *"Dauthen stared at her 200+ Claude slash commands, knowing manual conversion would take weeks. With `md2toml .claude/commands/`, she watched 200 files transform into Gemini format in under 50ms, leaving her evening free for her art class."*
 
 - ⚡ **Automatic Syntax Translation**: Intelligent conversion of Claude-specific syntax to Gemini CLI format.
   > *"Dauthen used to keep a cheat sheet beside her monitor, constantly looking up `$ARGUMENTS` to `{{args}}` mappings until 3 AM. With md2toml's autopilot translation engine, she now migrates entire projects without memorizing a single syntax rule."*

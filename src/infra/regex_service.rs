@@ -1,7 +1,6 @@
-// Infrastructure Layer - Regex Service Implementation
-//
-// Concrete implementation of RegexPort using regex crate.
-// This keeps external dependencies out of domain layer.
+//! Infrastructure Layer - Regex Service Implementation
+//!
+//! Concrete implementation of RegexPort using regex crate.
 
 use crate::domain::ports::RegexPort;
 use once_cell::sync::Lazy;

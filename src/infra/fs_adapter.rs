@@ -29,7 +29,6 @@ impl FileSystem for FsAdapter {
     }
 
     fn write(&self, path: &Path, content: &str) -> Result<usize> {
-        // Ensure parent directory exists
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|_| Md2TomlError::IoError)?;
         }
@@ -40,7 +39,6 @@ impl FileSystem for FsAdapter {
     }
 
     fn copy(&self, from: &Path, to: &Path) -> Result<u64> {
-        // Ensure parent directory exists
         if let Some(parent) = to.parent() {
             fs::create_dir_all(parent).map_err(|_| Md2TomlError::IoError)?;
         }

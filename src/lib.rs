@@ -1,13 +1,9 @@
 //! md2toml - Slash Commands Converter
 //!
-//! Core-System-First: All business logic is in lib.rs as the system root.
-//! This library provides pure business functions without infrastructure dependencies.
-//!
-//! # Architecture
-//!
-//! - **Domain Layer** (`domain/`): Pure business logic, models, and port definitions
-//! - **Application Layer** (`application.rs`): Use case orchestration and workflows
-//! - **Infrastructure Layer** (`infra/`): I/O implementations (separate crate)
+//! Core-System-First architecture with clear separation of concerns:
+//! - **Domain Layer**: Pure business logic without infrastructure dependencies
+//! - **Application Layer**: Use case orchestration
+//! - **Infrastructure Layer**: I/O implementations
 //!
 //! # Examples
 //!
@@ -26,20 +22,9 @@
 //!     .with_logger(Arc::new(SimpleLogger))
 //!     .with_config(config)
 //!     .build();
-//!
-//! // Service is ready to use - see actual usage in CLI
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! # Core-System-First Architecture
-//!
-//! This library implements a clean architecture with clear separation of concerns:
-//!
-//! - **Presentation Layer**: CLI entry point in `src/main.rs`
-//! - **Application Layer**: Use case orchestration in `src/application.rs`
-//! - **Domain Layer**: Pure business logic in `src/domain/`
-//! - **Infrastructure Layer**: I/O implementations in `src/infra/`
 
 // Domain Layer - Pure business logic
 pub mod domain;
@@ -58,9 +43,7 @@ pub use domain::{
     Md2TomlError, ParsedMarkdown, ProcessingStrategy, TextReplacer,
 };
 
-pub use application::{
-    EnvConfigLoader, Md2TomlService, Md2TomlServiceBuilder, StandardDirectoryConversionUseCase,
-};
+pub use application::{Md2TomlService, Md2TomlServiceBuilder, StandardDirectoryConversionUseCase};
 
 // Re-export commonly used types for convenience
 pub use domain::errors::Md2TomlError as Error;

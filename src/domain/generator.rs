@@ -1,7 +1,6 @@
-// Domain Layer - TOML Generation Logic
-//
-// Pure business logic for generating TOML output from metadata and content.
-// No infrastructure dependencies, no I/O operations.
+//! Domain Layer - TOML Generation Logic
+//!
+//! Pure business logic for generating TOML output from metadata and content.
 
 use crate::domain::errors::Result;
 use std::collections::BTreeMap;
@@ -94,7 +93,6 @@ mod tests {
 
         assert!(result.contains("path = \"/path/to/file\""));
         assert!(result.contains("url = \"https://example.com\""));
-        // Escaped quotes in TOML
         assert!(
             result.contains("quote = \"He said \\\"hello\\\"\"")
                 || result.contains("quote = 'He said \"hello\"'")
@@ -110,7 +108,6 @@ mod tests {
         let result = generate_toml(&metadata, prompt).unwrap();
 
         assert!(result.contains("prompt = \"\"\""));
-        // Multi-line strings in TOML preserve content literally
         assert!(result.contains("Content with \"quotes\" and \\ backslashes"));
     }
 
@@ -147,7 +144,6 @@ mod tests {
 
         let result = generate_toml(&metadata, prompt).unwrap();
 
-        // All metadata should appear before prompt
         let prompt_pos = result.find("prompt = ").unwrap();
         let alpha_pos = result.find("alpha = ").unwrap();
         let beta_pos = result.find("beta = ").unwrap();
