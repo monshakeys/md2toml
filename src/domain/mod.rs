@@ -1,6 +1,6 @@
 //! Domain Layer - Core Business Logic
 //!
-//! Pure business rules, free from infrastructure concerns.
+//! Pure business rules without infrastructure dependencies.
 
 pub mod config;
 pub mod directory;

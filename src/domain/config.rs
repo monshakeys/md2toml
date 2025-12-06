@@ -53,13 +53,7 @@ impl Md2TomlConfig {
         self
     }
 
-    /// Enable overwriting existing files
-    pub fn overwrite(mut self) -> Self {
-        self.overwrite = true;
-        self
-    }
-
-    /// Validate configuration
+    /// Validate configuration constraints
     pub fn validate(&self) -> Result<(), super::errors::Md2TomlError> {
         if self.parallel {
             if let Some(threads) = self.worker_threads {

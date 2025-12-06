@@ -1,11 +1,9 @@
 //! CLI entry point for md2toml conversion tool
 //!
-//! This is the presentation layer that orchestrates user interaction,
-//! delegates to the application layer, and handles all output formatting.
-//!
+//! This module handles user interaction and delegates to the application layer.
 
 use clap::Parser;
-use md2toml::application::StandardDirectoryConversionUseCase;
+use md2toml::application::{ErrorClassifier, StandardDirectoryConversionUseCase};
 use md2toml::domain::Md2TomlConfig;
 use md2toml::infra::SimpleLogger;
 use md2toml::Md2TomlServiceBuilder;
@@ -75,16 +73,18 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    // Arc-based dependency injection for shared dependencies
+    // Shared dependencies across the application
     let logger: Arc<dyn md2toml::domain::Logger> = Arc::new(SimpleLogger);
-
     let fs = Arc::new(md2toml::infra::FsAdapter::new());
     let directory_converter = Arc::new(StandardDirectoryConversionUseCase::new(fs.clone()))
         as Arc<dyn md2toml::domain::ports::DirectoryConversionUseCase>;
 
+    // Classify errors for appropriate user presentation
+    let error_classifier = ErrorClassifier::new();
+
     let mut config = Md2TomlConfig::default();
 
-    // CLI args take precedence over environment variables
+    // CLI arguments override environment configuration
     config = config
         .verbose()
         .with_skip_hidden(args.skip_hidden)
@@ -94,8 +94,7 @@ fn main() {
         config = config.parallel(args.workers);
     }
 
-    // Follows Rust guidelines: Arc<T> for sharing dependencies
-    // Configuration validation happens in Application layer
+    // Configuration validation is handled by Md2TomlConfig::validate()
     let service = match Md2TomlServiceBuilder::new()
         .with_filesystem(fs.clone())
         .with_directory_converter(directory_converter)
@@ -105,7 +104,6 @@ fn main() {
     {
         Ok(service) => service,
         Err(e) => {
-            // Presentation layer handles error formatting
             eprintln!("Configuration error: {}", e);
             process::exit(1);
         }
@@ -113,8 +111,6 @@ fn main() {
 
     match service.convert(args.input, args.output) {
         Ok(stats) => {
-            // Application layer returns pure data structures (ConversionStats)
-            // This is the correct location for UI output logic
             println!("\n✓ Conversion completed successfully!");
             println!("  Total: {}", stats.total);
             println!("  Succeeded: {}", stats.success);
@@ -129,16 +125,29 @@ fn main() {
             }
         }
         Err(e) => {
-            // Error formatting belongs in Presentation layer
-            let exit_code = match e {
-                md2toml::Md2TomlError::InvalidFrontmatter(_) => 2,
-                md2toml::Md2TomlError::IoError => 3,
-                md2toml::Md2TomlError::YamlParseError(_) => 4,
-                md2toml::Md2TomlError::PathError(_) => 5,
-                _ => 1,
-            };
+            // Apply classification-based error presentation
+            let category = error_classifier.classify(&e);
+            let exit_code = error_classifier.exit_code(category);
 
-            eprintln!("\n✗ Error: {}", e);
+            match category {
+                md2toml::application::ErrorCategory::UserInput => {
+                    eprintln!("\n❌ Input Error: {}", e);
+                    eprintln!("\n💡 Please check:");
+                    eprintln!("  • File format is correct");
+                    eprintln!("  • Required fields (title, description) are present");
+                    eprintln!("  • Frontmatter uses YAML format");
+                }
+                md2toml::application::ErrorCategory::System => {
+                    eprintln!("\n💥 System Error: {}", e);
+                    eprintln!("\n🔧 Technical details:");
+                    eprintln!("  {:?}", e);
+                }
+                md2toml::application::ErrorCategory::Transient => {
+                    eprintln!("\n⚠️  Temporary Error: {}", e);
+                    eprintln!("\n🔄 Suggestion: Please try again");
+                }
+            }
+
             eprintln!("\nRun 'md2toml --help' for usage information.");
             process::exit(exit_code);
         }

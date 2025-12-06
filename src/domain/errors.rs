@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Domain-level error types for md2toml conversion
 ///
-/// Errors are treated as data and must be portable across different
+/// These errors are pure data and must be portable across different
 /// infrastructure implementations.
 #[derive(Error, Debug)]
 pub enum Md2TomlError {

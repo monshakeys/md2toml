@@ -1,6 +1,6 @@
-//! Application Layer - Directory Conversion Use Case Implementation
+//! Directory Conversion Use Case Implementation
 //!
-//! This use case orchestrates the directory conversion business workflow.
+//! Orchestrates the directory conversion business workflow.
 
 use crate::domain::errors::Result;
 use crate::domain::models::ConversionStats;
@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 /// Standard directory conversion use case implementation
 ///
-/// This orchestrates the business workflow:
+/// Orchestrates the business workflow:
 /// - Scans directory for files
 /// - Determines processing strategy for each file
 /// - Coordinates file processing

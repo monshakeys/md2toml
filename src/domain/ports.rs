@@ -3,7 +3,7 @@ use crate::domain::models::ConversionStats;
 use std::path::Path;
 use std::path::PathBuf;
 
-/// Domain-level file metadata abstraction
+/// File system metadata abstraction
 ///
 /// Abstracts file system metadata to prevent infrastructure leakage.
 #[derive(Debug, Clone)]
@@ -87,7 +87,7 @@ pub trait Logger: Send + Sync {
     /// Log with custom level and context
     fn log(&self, level: LogLevel, message: &str, context: Option<&str>);
 
-    /// Indicate if debug logging is enabled
+    /// Check if debug logging is enabled
     fn is_debug_enabled(&self) -> bool;
 }
 
@@ -125,7 +125,7 @@ pub trait ConfigLoader: Send + Sync {
 /// Regex service port for text pattern matching
 ///
 /// Abstracts regex operations to keep domain layer pure
-/// and allow different implementations (regex, manual parsing, etc.)
+/// and allow different implementations (regex, manual parsing, etc.).
 pub trait RegexPort: Send + Sync {
     /// Replace all occurrences of backtick pattern !`command` with !{command}
     fn replace_backtick_patterns(&self, content: &str) -> String;

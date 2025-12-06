@@ -3,9 +3,11 @@
 //! Coordinates domain logic with infrastructure ports and implements business workflows.
 
 pub mod directory_conversion_use_case;
+pub mod error_classifier;
 
 // Re-export public types for convenience
 pub use directory_conversion_use_case::StandardDirectoryConversionUseCase;
+pub use error_classifier::{ErrorCategory, ErrorClassifier};
 
 use crate::domain::errors::{Md2TomlError, Result};
 use crate::domain::ports::{DirectoryConversionUseCase, FileSystem, Logger};
@@ -16,10 +18,8 @@ use crate::domain::{
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// Main application service for md2toml conversion
-///
-/// Orchestrates use cases and coordinates between domain logic
-/// and infrastructure adapters.
+/// Orchestrates conversion workflows by coordinating domain logic
+/// with infrastructure adapters.
 pub struct Md2TomlService {
     fs: Arc<dyn FileSystem>,
     directory_converter: Arc<dyn DirectoryConversionUseCase>,
@@ -97,7 +97,7 @@ impl Md2TomlService {
                     None => self.default_output_dir(&dir_path)?,
                 };
 
-                // Validate overwrite configuration via FileSystem Port
+                // Prevent accidental overwrites unless explicitly enabled
                 if self.fs.exists(&output_dir) && !self.config.overwrite {
                     return Err(Md2TomlError::Config(format!(
                         "Output directory {:?} already exists. Use --overwrite to enable.",
@@ -105,7 +105,6 @@ impl Md2TomlService {
                     )));
                 }
 
-                // Delegate directory conversion to the use case
                 let stats = self.directory_converter.convert_directory(
                     &dir_path,
                     &output_dir,
@@ -192,8 +191,7 @@ impl Md2TomlServiceBuilder {
             .expect("DirectoryConversionUseCase must be provided");
         let logger = self.logger.expect("Logger must be provided");
 
-        // Configuration validation is handled by Md2TomlConfig::validate()
-        // which is called when the configuration is created/modified
+        // Configuration validation occurs during config construction/modification
         Ok(Md2TomlService::new(
             fs,
             directory_converter,
