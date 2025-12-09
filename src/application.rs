@@ -1,11 +1,6 @@
-//! Application Layer - Use Case Orchestration
-//!
-//! Coordinates domain logic with infrastructure ports and implements business workflows.
-
 pub mod directory_conversion_use_case;
 pub mod error_classifier;
 
-// Re-export public types for convenience
 pub use directory_conversion_use_case::StandardDirectoryConversionUseCase;
 pub use error_classifier::{ErrorCategory, ErrorClassifier};
 

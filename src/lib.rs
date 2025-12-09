@@ -26,16 +26,12 @@
 //! # }
 //! ```
 
-// Domain Layer - Pure business logic
 pub mod domain;
 
-// Application Layer - Use case orchestration
 pub mod application;
 
-// Infrastructure Layer - I/O implementations
 pub mod infra;
 
-// Re-export public API from domain
 pub use domain::{
     apply_all_replacements_simple, convert_markdown_to_toml, detect_input_type, extract_content,
     generate_toml, map_output_base_path, parse_frontmatter, replace_arguments, should_ignore_path,
@@ -45,5 +41,4 @@ pub use domain::{
 
 pub use application::{Md2TomlService, Md2TomlServiceBuilder, StandardDirectoryConversionUseCase};
 
-// Re-export commonly used types for convenience
 pub use domain::errors::Md2TomlError as Error;

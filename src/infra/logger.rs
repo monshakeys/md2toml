@@ -1,16 +1,5 @@
-//! Infrastructure Layer - Logger Implementation
-//!
-//! Simple logger that outputs to stdout/stderr.
-
 use crate::domain::ports::{LogLevel, Logger};
 
-/// A simple logger adapter that uses println!/eprintln! directly.
-///
-/// This implementation:
-/// - Satisfies the Port pattern (implements Logger trait from Domain)
-/// - Keeps Infrastructure layer free from direct println! usage
-/// - Avoids dependency on the `log` crate (simpler, less dependencies)
-/// - Suitable for CLI tools that don't need complex logging infrastructure
 pub struct SimpleLogger;
 
 impl Logger for SimpleLogger {
@@ -27,7 +16,6 @@ impl Logger for SimpleLogger {
     }
 
     fn debug(&self, _message: &str) {
-        // Only output debug messages in debug builds
         #[cfg(debug_assertions)]
         {
             println!("DEBUG: {}", _message);

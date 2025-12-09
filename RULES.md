@@ -50,8 +50,8 @@ This tool supports two file types with different processing strategies:
 Processing Strategy Implementation:
 ```rust
 enum ProcessingStrategy {
-    Convert,  // md → toml (full conversion pipeline)
-    Copy,     // txt → txt (direct copy)
+    Convert,
+    Copy,
 }
 ```
 
@@ -288,18 +288,18 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
 
 ## Test Coverage
 ### Test Coverage Summary
-- ✅ **69 tests passing** (100% success rate with nextest)
-- ✅ **51 unit tests** across 3 layers (Domain/Application/Infrastructure)
-- ✅ **18 integration tests** for end-to-end validation
+- ✅ **74 tests passing** (100% success rate with nextest)
+- ✅ **55 unit tests** across 3 layers (Domain/Application/Infrastructure)
+- ✅ **19 integration tests** for end-to-end validation
 
-### Unit Tests (51 tests total)
+### Unit Tests (55 tests total)
 
 **By Layer:**
-- **Domain Layer: 44 tests**
+- **Domain Layer: 48 tests**
   - directory.rs: 8 tests (path detection + filtering + mapping)
   - parser.rs: 22 tests (metadata parsing + content extraction + validation)
   - generator.rs: 9 tests (TOML output generation)
-  - replacer.rs: 5 tests ($ARGUMENTS + backticks replacement)
+  - replacer.rs: 9 tests ($ARGUMENTS + backticks replacement + mixed patterns)
   - errors.rs: 0 tests (domain error handling)
 
 - **Application Layer: 1 test**
@@ -309,9 +309,9 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
   - fs_adapter.rs: 2 tests (file system I/O operations)
   - regex_service.rs: 4 tests (pattern matching and replacement)
 
-**Verification:** 44 + 1 + 6 = 51 unit tests ✅
+**Verification:** 48 + 1 + 6 = 55 unit tests ✅
 
-### Integration Tests (18 tests)
+### Integration Tests (19 tests)
 
 **Directory Conversion Tests (8 tests):**
 - **Nested directory structure conversion**: Verifies recursive directory traversal and maintains folder hierarchy in output
@@ -323,15 +323,16 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
 - **Special character filenames**: Tests conversion with files containing spaces, unicode, and special symbols
 - **Prefix filtering (~ and .)**: Confirms automatic skipping of tilde and dot-prefixed files/directories
 
-**File Conversion Tests (10 tests):**
+**File Conversion Tests (11 tests):**
 
-**Basic Conversion Flow (6 tests):**
+**Basic Conversion Flow (7 tests):**
 - Simple markdown conversion with minimal metadata
 - Complex metadata with nested structures
-- Multi-line prompt content preservation
-- Special characters and escaping in content
-- Empty metadata handling
-- Long content handling
+- Markdown with `!`command`` pattern replacements
+- Markdown with `$ARGUMENTS` placeholder replacements
+- Mixed backticks (normal `` `code` `` preserved, only `` !`cmd` `` replaced)
+- Empty content handling
+- No metadata handling
 
 **Validation Scenarios (4 tests):**
 - ✅ **Pass**: Valid file with title + description fields
@@ -339,4 +340,4 @@ Error: Invalid frontmatter format: This is not a markdown file for cc slash comm
 - ❌ **Missing title**: File lacks required title field
 - ❌ **No metadata**: File has no frontmatter at all
 
-**Total: 8 + 6 + 4 = 18 integration tests**
+**Total: 8 + 7 + 4 = 19 integration tests**

@@ -1,7 +1,3 @@
-//! Domain Layer - Directory Processing Logic
-//!
-//! Pure business logic for directory and file operations.
-
 use std::path::{Path, PathBuf};
 
 use crate::domain::models::InputType;

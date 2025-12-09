@@ -226,7 +226,7 @@ title: Empty
         let has_validation_error = stats
             .failed
             .iter()
-            .any(|(_, error)| error.contains("This is not a markdown file for cc slash command"));
+            .any(|(_, error)| error.contains("缺少必要欄位"));
 
         assert!(
             has_validation_error,

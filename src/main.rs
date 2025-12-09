@@ -1,7 +1,3 @@
-//! CLI entry point for md2toml conversion tool
-//!
-//! This module handles user interaction and delegates to the application layer.
-
 use clap::Parser;
 use md2toml::application::{ErrorClassifier, StandardDirectoryConversionUseCase};
 use md2toml::domain::Md2TomlConfig;
@@ -60,14 +56,6 @@ struct Args {
     /// Overwrite existing output files
     #[arg(short, long)]
     overwrite: bool,
-
-    /// Enable parallel processing
-    #[arg(long)]
-    parallel: bool,
-
-    /// Number of worker threads (default: number of CPUs)
-    #[arg(long, value_name = "N")]
-    workers: Option<usize>,
 }
 
 fn main() {
@@ -89,10 +77,6 @@ fn main() {
         .verbose()
         .with_skip_hidden(args.skip_hidden)
         .with_overwrite(args.overwrite);
-
-    if args.parallel {
-        config = config.parallel(args.workers);
-    }
 
     // Configuration validation is handled by Md2TomlConfig::validate()
     let service = match Md2TomlServiceBuilder::new()

@@ -42,8 +42,8 @@ impl FileType {
 /// Processing strategy for different file types
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProcessingStrategy {
-    Convert, // Convert markdown to TOML (md -> toml)
-    Copy,    // Copy file as-is (txt -> txt)
+    Convert,
+    Copy,
 }
 
 impl ProcessingStrategy {

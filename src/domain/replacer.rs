@@ -33,12 +33,19 @@ impl TextReplacer {
     }
 }
 
-/// Standalone function for simple argument replacement
-/// Used when regex service is not available
+/// Applies all text replacements using RegexService internally
+///
+/// This is a convenience function that creates a RegexService instance
+/// and applies both $ARGUMENTS and !`...` replacements.
+///
+/// Uses the same regex-based logic as TextReplacer for correctness.
 pub fn apply_all_replacements_simple(content: &str) -> String {
     let step1 = replace_arguments(content);
-    // Simple string-based backtick replacement (no regex dependency)
-    step1.replace("!`", "!{").replace("`", "}")
+
+    // RegexService is zero-cost (ZST) and regex is compiled statically
+    let regex_service = crate::infra::RegexService::new();
+    use crate::domain::ports::RegexPort;
+    regex_service.replace_backtick_patterns(&step1)
 }
 
 #[cfg(test)]
@@ -48,7 +55,9 @@ mod tests {
     struct MockRegexPort;
     impl RegexPort for MockRegexPort {
         fn replace_backtick_patterns(&self, content: &str) -> String {
-            content.replace("!`", "!{").replace("`", "}")
+            // Use the real RegexService for testing (it's zero-cost)
+            let service = crate::infra::RegexService::new();
+            service.replace_backtick_patterns(content)
         }
     }
 
@@ -86,5 +95,46 @@ mod tests {
         let input = "First $ARGUMENTS and second $ARGUMENTS in line.";
         let result = apply_all_replacements_simple(input);
         assert_eq!(result, "First {{args}} and second {{args}} in line.");
+    }
+
+    #[test]
+    fn test_apply_all_replacements_simple_with_normal_backticks() {
+        // Critical test: Ensures normal backticks are NOT replaced
+        let input = "Use `git status` to check and !`git commit` to save.";
+        let result = apply_all_replacements_simple(input);
+        assert_eq!(
+            result, "Use `git status` to check and !{git commit} to save.",
+            "Normal backticks should be preserved, only !`...` should be replaced"
+        );
+    }
+
+    #[test]
+    fn test_apply_all_replacements_simple_mixed_content() {
+        // Real-world scenario: technical documentation with inline code
+        let input = "Check `npm install` then run !`{{args}}` for the task.";
+        let result = apply_all_replacements_simple(input);
+        assert_eq!(
+            result,
+            "Check `npm install` then run !{{{args}}} for the task."
+        );
+    }
+
+    #[test]
+    fn test_apply_all_replacements_simple_multiple_patterns() {
+        // Multiple normal backticks and special patterns
+        let input = "Functions: `foo()`, `bar()`, commands: !`cmd1`, !`cmd2`.";
+        let result = apply_all_replacements_simple(input);
+        assert_eq!(
+            result,
+            "Functions: `foo()`, `bar()`, commands: !{cmd1}, !{cmd2}."
+        );
+    }
+
+    #[test]
+    fn test_apply_all_replacements_simple_with_arguments() {
+        // Combined: $ARGUMENTS + mixed backticks
+        let input = "Process $ARGUMENTS using `tool` or !`command`.";
+        let result = apply_all_replacements_simple(input);
+        assert_eq!(result, "Process {{args}} using `tool` or !{command}.");
     }
 }

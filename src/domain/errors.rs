@@ -1,9 +1,5 @@
 use thiserror::Error;
 
-/// Domain-level error types for md2toml conversion
-///
-/// These errors are pure data and must be portable across different
-/// infrastructure implementations.
 #[derive(Error, Debug)]
 pub enum Md2TomlError {
     #[error("YAML parsing failed: {0}")]

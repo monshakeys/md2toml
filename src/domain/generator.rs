@@ -5,6 +5,18 @@
 use crate::domain::errors::Result;
 use std::collections::BTreeMap;
 
+/// Escape special characters in TOML strings according to TOML v1.0.0 spec
+fn escape_toml_string(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\x08', "\\b")
+        .replace('\x0C', "\\f")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
 /// Generates TOML output from metadata and prompt content.
 ///
 /// Uses BTreeMap for automatic key ordering and pre-allocates string capacity
@@ -14,7 +26,7 @@ pub fn generate_toml(metadata: &BTreeMap<String, String>, prompt: &str) -> Resul
     let mut output = String::with_capacity(estimated_size);
 
     for (key, value) in metadata {
-        let escaped_value = value.replace('"', "\\\"");
+        let escaped_value = escape_toml_string(value);
         output.push_str(&format!("{} = \"{}\"\n", key, escaped_value));
     }
 

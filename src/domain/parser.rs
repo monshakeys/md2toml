@@ -156,7 +156,7 @@ pub fn extract_content(markdown: &str) -> Result<String> {
 pub fn validate_required_fields(metadata: &BTreeMap<String, String>) -> Result<()> {
     if !metadata.contains_key("title") || !metadata.contains_key("description") {
         return Err(Md2TomlError::InvalidFrontmatter(
-            "This is not a markdown file for cc slash command.".to_string(),
+            "缺少必要欄位: 'title' 和/或 'description'".to_string(),
         ));
     }
     Ok(())
@@ -405,7 +405,7 @@ Special chars: @#$%^&*()"#;
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "Invalid frontmatter format: This is not a markdown file for cc slash command."
+            "Invalid frontmatter format: 缺少必要欄位: 'title' 和/或 'description'"
         );
     }
 
@@ -418,7 +418,7 @@ Special chars: @#$%^&*()"#;
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "Invalid frontmatter format: This is not a markdown file for cc slash command."
+            "Invalid frontmatter format: 缺少必要欄位: 'title' 和/或 'description'"
         );
     }
 
@@ -430,7 +430,7 @@ Special chars: @#$%^&*()"#;
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "Invalid frontmatter format: This is not a markdown file for cc slash command."
+            "Invalid frontmatter format: 缺少必要欄位: 'title' 和/或 'description'"
         );
     }
 

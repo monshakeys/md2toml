@@ -120,7 +120,7 @@ fn test_validation_fail_missing_description() {
 
     assert!(result.is_err());
     let error_message = result.unwrap_err().to_string();
-    assert!(error_message.contains("This is not a markdown file for cc slash command."));
+    assert!(error_message.contains("缺少必要欄位"));
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn test_validation_fail_missing_title() {
 
     assert!(result.is_err());
     let error_message = result.unwrap_err().to_string();
-    assert!(error_message.contains("This is not a markdown file for cc slash command."));
+    assert!(error_message.contains("缺少必要欄位"));
 }
 
 #[test]
@@ -144,5 +144,19 @@ fn test_validation_fail_no_metadata() {
 
     assert!(result.is_err());
     let error_message = result.unwrap_err().to_string();
-    assert!(error_message.contains("This is not a markdown file for cc slash command."));
+    assert!(error_message.contains("缺少必要欄位"));
+}
+
+#[test]
+fn test_integration_mixed_backticks() {
+    // Pure Logic Test - No timeout required
+    // Critical test: Verifies that normal backticks are preserved
+    // while !`...` patterns are correctly replaced
+    let input = read_fixture("mixed_backticks.md");
+    let expected = read_fixture("mixed_backticks.expected.toml");
+
+    let result = convert_md_to_toml(&input).unwrap();
+
+    assert_eq!(result, expected,
+        "Mixed backticks test failed: Normal backticks should be preserved, only !`...` should be replaced");
 }

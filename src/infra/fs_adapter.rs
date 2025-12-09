@@ -5,10 +5,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-/// Standard file system adapter
-///
-/// Provides concrete implementation of file system operations
-/// by delegating to std::fs and std::path.
 pub struct FsAdapter;
 
 impl FsAdapter {

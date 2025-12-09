@@ -1,15 +1,7 @@
-//! Infrastructure Layer - Regex Service Implementation
-//!
-//! Concrete implementation of RegexPort using regex crate.
-
 use crate::domain::ports::RegexPort;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-/// Regex service implementation
-///
-/// Uses lazy-loaded compiled regex for performance.
-/// Initialized once at startup.
 pub struct RegexService;
 
 impl RegexService {
@@ -24,8 +16,6 @@ impl Default for RegexService {
     }
 }
 
-/// Lazily compiled regex for backtick pattern replacement.
-/// Initialized once at startup for performance.
 static BACKTICK_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"!`([^`]*)`").expect("Failed to compile backtick regex"));
 
