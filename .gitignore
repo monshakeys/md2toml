@@ -29,6 +29,7 @@ Thumbs.db
 # ╚══════════╝
 # Visual Studio Settings
 .devcontainer/
+.idea/
 .vscode/
 .vscodeignore
 *.code-workspace
@@ -40,8 +41,28 @@ Thumbs.db
 .codex/*.toml
 .cursor/*.json
 .gemini/*.json
-.kilocode/
 .serena/
+
+# ╔════════╗
+# ╠  Node  ╣
+# ╚════════╝
+.npm
+.pnp.*
+.yarn/
+node_modules/
+
+# ╔══════════╗
+# ╠  Python  ╣
+# ╚══════════╝
+*.py[cod]
+.coverage
+.ipynb_checkpoints
+.pytest_cache/
+.venv
+__pycache__/
+htmlcov/
+media/
+venv/
 
 # ╔════════╗
 # ╠  Rust  ╣
@@ -64,6 +85,8 @@ sps/
 # ╔══════════════╗
 # ╠  Production  ╣
 # ╚══════════════╝
+*.key
+*.pem
 .env
 .env.dev
 .env.local
