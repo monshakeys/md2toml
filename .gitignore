@@ -37,11 +37,11 @@ Thumbs.db
 # ╔══════╗
 # ╠  AI  ╣
 # ╚══════╝
+**/*/CLAUDE.md
 .claude/*.json
 .codex/*.toml
 .cursor/*.json
 .gemini/*.json
-.serena/
 
 # ╔════════╗
 # ╠  Node  ╣
@@ -58,10 +58,11 @@ node_modules/
 .coverage
 .ipynb_checkpoints
 .pytest_cache/
+.ruff_cache/
 .venv
+/media/
 __pycache__/
 htmlcov/
-media/
 venv/
 
 # ╔════════╗
@@ -91,7 +92,7 @@ sps/
 .env.dev
 .env.local
 .env.prod
-secrets/
+/secrets/
 
 # ╔══════════╗
 # ╠  Custom  ╣
